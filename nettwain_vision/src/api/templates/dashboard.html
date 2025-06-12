@@ -2,87 +2,273 @@
 <html lang="en" data-theme="{{ theme.scheme }}">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Demo</title>
+    <title>Network Digital Twin Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="stylesheet" href="/static/demo.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .dashboard-grid {
+        :root {
+            --primary: {{ theme.primary }};
+            --accent: {{ theme.accent }};
+            --secondary: {{ theme.secondary }};
+            --card-radius: {{ theme.components.card.border_radius }};
+            --sidebar-bg: {{ theme.components.sidebar.bg_light }};
+            --sidebar-bg-dark: {{ theme.components.sidebar.bg_dark }};
+        }
+        body {
+            background: var(--sidebar-bg); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; color: #172033;
+        }
+        .sidebar {
+            background: var(--sidebar-bg);
+            width: 220px;
+            min-height: 100vh;
+            float: left;
+            padding: 2em 1em 1em 1em;
+            color: var(--secondary);
+            box-sizing: border-box;
+        }
+        .main {
+            margin-left: 240px;
+            padding: 2em 2.5em;
+            max-width: 1600px;
+        }
+        .card {
+            background: #fff;
+            border-radius: var(--card-radius);
+            box-shadow: 0 2px 8px rgba(37,99,235,0.07);
+            padding: 1.3em 1.7em;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3em;
+            margin-bottom: 1.7em;
+        }
+        .dashboard-cards {
             display: flex;
             flex-wrap: wrap;
-            gap: 1.5em;
+            gap: 1.6em;
         }
         .kpi-card {
-            background: #fff;
-            border-radius: 1em;
-            box-shadow: 0 2px 8px rgba(37,99,235,0.05);
-            padding: 1.5em 2em;
-            flex: 1 1 200px;
-            min-width: 200px;
-            margin-bottom: 1em;
-            border-left: 4px solid var(--primary);
+            min-width: 234px; max-width: 340px;
+            flex: 1 1 255px;
+            border-left: 6px solid var(--primary);
         }
-        .kpi-card > .kpi-title {
-            font-size: 1.1em;
+        .kpi-card.primary { border-left-color: var(--primary); }
+        .kpi-card.accent { border-left-color: var(--accent);}
+        .kpi-card.secondary { border-left-color: var(--secondary);}
+        .kpi-card .kpi-title {
+            font-size: 1.09em;
+            font-weight: 600;
             color: var(--primary);
-            margin-bottom: 0.5em;
+            margin-bottom: 0.2em;
+            display: flex;
+            align-items: center;
+            gap: 0.4em;
         }
-        .kpi-value {
-            font-size: 2.2em;
+        .kpi-card .icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        .kpi-card .kpi-value {
+            font-size: 2.13em;
             font-weight: bold;
-            margin-bottom: 0.3em;
+            margin-bottom: 0.1em;
+            letter-spacing: 0.03em;
         }
-        .trend-up { color: #22c55e; }
-        .trend-down { color: #e11d48; }
+        .kpi-card .trend-up { color: #22c55e; font-size:1.01em;}
+        .kpi-card .trend-down { color: #e11d48;font-size:1.01em;}
+        .kpi-card .kpi-desc { color: #888; font-size: 0.97em;}
+        .card.chart { min-width:340px; flex:2; }
+        .card.summary { min-width:320px; flex:3; margin-right:2em; }
+        .drilldown-cols {
+            display: flex; flex-wrap: wrap; gap: 2em; margin-top:2em;
+        }
+        .drilldown-area { flex: 1 1 360px; min-width: 310px;}
+        .mapmini-card { background: #18181b; color:#fff; border-radius:1em;box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding:1.15em 1.3em; margin-bottom:0.7em;}
+        .table-preview { background: #fff; border-radius:0.88em; box-shadow:0 1px 6px rgba(37,99,235,0.08); margin:0.7em 0; padding:0.4em 0.9em;}
+        .quick-actions { margin-top:1em; }
+        .quick-actions a {
+            display: inline-block; margin-right:1.2em; margin-bottom:.7em;
+            background: var(--primary); color: #fff; border-radius:0.7em; padding:.53em 1.3em; text-decoration: none; font-weight: 500; font-size: 1.03em; transition: background 0.15s;
+        }
+        .quick-actions a.secondary { background: var(--secondary);}
+        .quick-actions a.accent { background: var(--accent); color:#222;}
+        .kpi-bar { width: 16px; height: 16px; margin-left: 0.3em; vertical-align: middle; border-radius:6px; display:inline-block;}
+        .link-drill { color:var(--primary); text-decoration:underline; cursor:pointer; font-size:1em;}
+        .main h1 {font-size:2.1rem; font-weight:700; margin-top:0;}
+        .section-head {
+            color: var(--secondary); font-size:1.17em; margin:1.3em 0 0.7em 0; font-weight:600;
+        }
+        .spark-chart { width:100%; height:66px; display:block;}
+        .alerts-list {font-size:0.98em; color:#e11d48;}
         @media (prefers-color-scheme: dark) {
-            .kpi-card { background: #18181b; color: #f4f4f5; }
+            body {background:#172033; color:#f4f4f5;}
+            .sidebar {background:var(--sidebar-bg-dark); color:#fbbf24;}
+            .card {background:#18181b; color:#f4f4f5;}
+            .kpi-card .kpi-title {color:var(--accent);}
+            .table-preview {background: #18181b; color:#f4f4f5;}
+        }
+        @media (max-width: 1100px) {
+            .main { padding: 1.15em 0.4em;}
+            .dashboard-cards, .drilldown-cols { flex-direction: column;}
+            .kpi-card,.card.chart, .card.summary, .drilldown-area { max-width: 99vw;}
+        }
+        @media (max-width:600px) {
+            .main {margin-left: 0; padding: 0.8em 0.2em;}
+            .sidebar {display:none;}
         }
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        <h2 style="color: var(--primary); font-size: 1.2em; margin-bottom:2em;">NetTwin Vision-10</h2>
+        <nav>
+            <a href="/" style="color: var(--primary);font-weight:600;">Dashboard</a>
+            <a href="/map">Network Map</a>
+            <a href="/planning">Planning Wizard</a>
+            <a href="/inventory">Inventory</a>
+            <a href="/reports">Reports</a>
+            <a href="/api/v1/ui/theme">UI Theme</a>
+        </nav>
+        <div style="position: fixed; bottom: 2em; left: 1em; width: 180px;">
+            <a href="/docs" style="color: #888; display: block; border-top:1px solid #eee; padding-top:0.8em; margin-top:0.8em; text-align:left;">API Docs</a>
+        </div>
+    </div>
     <div class="main">
-        <h1>Dashboard</h1>
-        <!-- Modern KPI Cards -->
-        <div class="dashboard-grid">
-            <div class="kpi-card">
-                <div class="kpi-title">Active Sites</div>
+        <h1>
+            Digital Twin Dashboard
+            <span class="kpi-bar" style="background:var(--accent);"></span>
+        </h1>
+        <div class="dashboard-cards">
+            <!-- KPI SUMMARY CARDS -->
+            <div class="card kpi-card primary">
+                <div class="kpi-title">
+                    <span class="icon">📡</span> Active Sites
+                </div>
                 <div class="kpi-value">42</div>
                 <div class="trend-up">+3.5%</div>
                 <div class="kpi-desc">Total live sites in network</div>
             </div>
-            <div class="kpi-card" style="border-left-color: var(--accent);">
-                <div class="kpi-title">Planned Upgrades</div>
+            <div class="card kpi-card accent">
+                <div class="kpi-title">
+                    <span class="icon">⏫</span> Planned Upgrades
+                </div>
                 <div class="kpi-value">7</div>
                 <div class="trend-down">-12%</div>
                 <div class="kpi-desc">Planned upgrades in queue</div>
             </div>
-            <div class="kpi-card" style="border-left-color: var(--secondary);">
-                <div class="kpi-title">Site Alerts</div>
+            <div class="card kpi-card secondary">
+                <div class="kpi-title">
+                    <span class="icon">🔔</span> Site Alerts
+                </div>
                 <div class="kpi-value">2</div>
-                <div class="trend-up"></div>
                 <div class="kpi-desc">Active alerts flagged by simulation</div>
             </div>
-            <div class="kpi-card" style="border-left-color: var(--primary);">
-                <div class="kpi-title">Network Health</div>
+            <div class="card kpi-card primary">
+                <div class="kpi-title">
+                    <span class="icon">❤️‍🩹</span> Network Health
+                </div>
                 <div class="kpi-value">98.3%</div>
                 <div class="trend-up">+0.8%</div>
                 <div class="kpi-desc">Overall health: SLAs, latency, up-time</div>
             </div>
         </div>
-        <!-- Row with a line chart and bar chart -->
-        <div class="dashboard-grid" style="gap:3em;">
-            <div class="kpi-card" style="min-width:320px;flex:2;">
-                <div class="kpi-title">Availability Trend</div>
-                <canvas id="availabilityTrend" height="90"></canvas>
+        <div class="dashboard-cards" style="gap:2.2em; margin-bottom:0.6em;">
+            <div class="card chart">
+                <div class="kpi-title" style="margin-bottom:.3em;">Availability Trend</div>
+                <canvas id="availabilityTrend" height="75"></canvas>
             </div>
-            <div class="kpi-card" style="min-width:320px;flex:2;">
-                <div class="kpi-title">Active Alerts (last week)</div>
-                <canvas id="alertTrend" height="90"></canvas>
+            <div class="card chart">
+                <div class="kpi-title" style="margin-bottom:.3em;">Active Alerts (last week)</div>
+                <canvas id="alertTrend" height="75"></canvas>
+            </div>
+            <div class="card summary" style="background:var(--accent);color:#222;">
+                <div class="kpi-title" style="color:var(--secondary);font-size:1em;">Digital Twin Summary</div>
+                <div style="font-size:1.2em;"><b>4</b> Sites, <b>4</b> Links</div>
+                <div style="font-size:0.89em; color:#333;margin-bottom:.7em;">⮞ Live view of physical & logical assets<br>⮞ KPIs auto-refresh for demo</div>
+                <div>
+                    <span style="font-size:0.96em; color: #333;">Highest Availability: <b>98.3%</b> (Central Hub)</span><br>
+                    <span style="font-size:0.96em; color: #e11d48;">Critical: 2 active alerts</span>
+                </div>
+                <div class="quick-actions" style="margin-top:1.3em;">
+                    <a href="/planning" >New Plan</a>
+                    <a href="/inventory" class="secondary">Inventory</a>
+                </div>
             </div>
         </div>
-        <a href="/" class="btn" style="margin-top:2em;">Back to Dashboard</a>
+        <div class="drilldown-cols">
+            <div class="drilldown-area">
+                <div class="section-head">Site & Link Overlay (Map Preview)</div>
+                <div class="mapmini-card">
+                    <!-- SVG Mini Network map (matches /map) -->
+                    <svg id="miniNetMap" viewBox="0 0 300 200" width="95%" height="115">
+                        <!-- Nodes -->
+                        <circle cx="150" cy="70" r="18" fill="#2563eb" />
+                        <text x="144" y="72" fill="#fff" font-size="1em">A1</text>
+                        <circle cx="45" cy="25" r="12" fill="#2563eb" />
+                        <text x="41" y="28" fill="#fff" font-size="0.8em">A2</text>
+                        <circle cx="265" cy="40" r="13" fill="#fbbf24"/>
+                        <text x="260" y="45" fill="#fff" font-size="0.8em">A3</text>
+                        <circle cx="80" cy="170" r="13" fill="#2563eb"/>
+                        <text x="75" y="175" fill="#fff" font-size="0.8em">A4</text>
+                        <!-- Links -->
+                        <line x1="150" y1="70" x2="45" y2="25" stroke="#e11d48" stroke-width="4" />
+                        <line x1="150" y1="70" x2="265" y2="40" stroke="#22c55e" stroke-width="3.5" />
+                        <line x1="45" y1="25" x2="80" y2="170" stroke="#22c55e" stroke-width="3.5" />
+                        <line x1="80" y1="170" x2="265" y2="40" stroke="#fbbf24" stroke-width="3.5" stroke-dasharray="8 5"/>
+                        <!-- Legend -->
+                        <circle cx="195" cy="110" r="5.2" fill="#e11d48"/>
+                        <text x="205" y="115" font-size="0.74em" fill="#e11d48">Degraded</text>
+                        <circle cx="248" cy="140" r="5.2" fill="#fbbf24"/>
+                        <text x="259" y="145" font-size="0.74em" fill="#fbbf24">Planned</text>
+                    </svg>
+                    <div class="kpi-desc" style="font-size:0.93em; color:#ccc;margin-top:.5em;">
+                        <b>Legend:</b> <span style="color:#2563eb;">Active </span>
+                        <span style="color:#fbbf24;">Planned</span>
+                        <span style="color:#e11d48;">Degraded</span>
+                    </div>
+                    <div style="margin-top:0.3em;">
+                        <a href="/map" class="link-drill">View Interactive Map &rarr;</a>
+                    </div>
+                </div>
+            </div>
+            <div class="drilldown-area">
+                <div class="section-head">Inventory Preview</div>
+                <div class="table-preview">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr style="color:#2563eb;font-weight:600; border-bottom: 1px solid #eee;">
+                            <td style="padding:.2em .5em;">ID</td><td>Name</td><td>Status</td><td>Availability</td>
+                        </tr>
+                        <tr><td style="padding:.2em .5em;">A1</td><td>Central Hub</td><td><span style="color:#22c55e;">Active</span></td><td>98.3%</td></tr>
+                        <tr><td style="padding:.2em .5em;">A2</td><td>North Node</td><td><span style="color:#22c55e;">Active</span></td><td>96.9%</td></tr>
+                        <tr><td style="padding:.2em .5em;">A3</td><td>East Node</td><td><span style="color:#2563eb;">Planned</span></td><td>-</td></tr>
+                        <tr><td style="padding:.2em .5em;">A4</td><td>South Node</td><td><span style="color:#22c55e;">Active</span></td><td>97.5%</td></tr>
+                    </table>
+                </div>
+                <a href="/inventory" class="link-drill">View Inventory &rarr;</a>
+            </div>
+            <div class="drilldown-area">
+                <div class="section-head">Alerts / Key Metrics</div>
+                <div class="card" style="margin:0 0 .5em 0; padding:0.8em 1em; background:#e11d48;color:#fff;">
+                    <div style="font-weight:500;">Active Site Alerts</div>
+                    <ul class="alerts-list" style="margin:0.4em 0 .4em 1.1em;">
+                        <li>[A1-A2] Link Overutilized</li>
+                        <li>[A2] High utilization</li>
+                    </ul>
+                </div>
+                <div class="card" style="margin:0 0 .5em 0; padding:0.85em 1em;">
+                    <div class="kpi-title" style="color:var(--primary);margin-bottom:.3em;">Quick KPIs</div>
+                    <div>Planned Upgrades: <b>7</b></div>
+                    <div>Current Sim Alerts: <b>2</b></div>
+                    <div>Inventory: <b>4 sites</b></div>
+                </div>
+                <a href="/reports" class="link-drill">View Reports &rarr;</a>
+            </div>
+        </div>
+        <!-- End drilldown-cols -->
     </div>
     <script>
-    // Availability KPI Trend - Line Chart
+    // Charts for KPI trends
     const ctxAvail = document.getElementById('availabilityTrend').getContext('2d');
     new Chart(ctxAvail, {
         type: 'line',
@@ -92,7 +278,7 @@
                 label: 'Availability (%)',
                 data: [97.2, 97.7, 98.3, 98.3],
                 borderColor: '#2563eb',
-                backgroundColor: 'rgba(37,99,235,0.09)',
+                backgroundColor: 'rgba(37,99,235,0.10)',
                 fill: true,
                 tension: 0.3,
                 pointRadius: 4,
@@ -101,13 +287,10 @@
         },
         options: {
             plugins: {legend: {display: false}},
-            scales: {
-                y: {beginAtZero: false, min: 96, max: 100},
-                x: {ticks:{color:'#555'}}
-            }
+            scales: {y: {beginAtZero: false, min: 96, max:100}, x: {ticks:{color:'#555'}}}
         }
     });
-    // Alerts Trend - Bar Chart
+
     const ctxAlerts = document.getElementById('alertTrend').getContext('2d');
     new Chart(ctxAlerts, {
         type: 'bar',
