@@ -4,20 +4,76 @@
     <meta charset="UTF-8">
     <title>Reports Demo</title>
     <link rel="stylesheet" href="/static/demo.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .report-card {background:#fff; border-radius:1em; box-shadow:0 2px 10px rgba(24,24,27,0.07); padding:1.5em 1.8em; margin-bottom:2em;}
+        .charts-row {display:flex; flex-wrap:wrap; gap:2em;}
+        .chart-wrap {flex:1 1 320px; min-width:300px;}
+        .exports-list {font-size:1.04em; margin-top:1em;}
+        .report-download {margin:0.6em 0 0 0;}
+        @media (prefers-color-scheme: dark) { .report-card { background: #18181b; color: #f4f4f5; } }
+    </style>
 </head>
 <body>
     <div class="main">
         <h1>Reports</h1>
-        <div class="card primary">
-            <b>Available Reports and Exports (Demo)</b><br>
-            <ul>
-                <li>Site Planning Report (PDF/CSV)</li>
-                <li>Utilization Summary</li>
-                <li>Risk & Alerts Report</li>
-            </ul>
-            <em>(Charts, download buttons for demo only.)</em>
-            <br><a href="/" class="btn">Back to Landing</a>
+        <div class="report-card primary">
+            <b>Planning Summary Reports</b>
+            <div class="charts-row">
+                <div class="chart-wrap">
+                    <b>Planned Upgrades per Quarter</b>
+                    <canvas id="upgradeBar" height="130"></canvas>
+                </div>
+                <div class="chart-wrap">
+                    <b>Alerts by Type</b>
+                    <canvas id="alertsPie" height="130"></canvas>
+                </div>
+            </div>
+            <div class="exports-list">
+                <b>Available Reports:</b>
+                <ul>
+                    <li>Site Planning Report (<a href="/static/mock_site_report.csv" target="_blank">CSV</a> / <a href="/static/mock_site_report.pdf" target="_blank">PDF</a>)</li>
+                    <li>Utilization Summary</li>
+                    <li>Risk & Alerts Report</li>
+                </ul>
+            </div>
+            <div class="report-download">
+                <button onclick="alert('Demo download initiated!');" style="background:var(--primary);color:#fff;border:none;border-radius:5px;padding:.5em 1.2em;cursor:pointer;">Download Current Report</button>
+            </div>
+            <a href="/" class="btn" style="margin-top:2em;">Back to Landing</a>
         </div>
     </div>
+    <script>
+    // Bar for upgrades per quarter
+    new Chart(document.getElementById('upgradeBar').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+            datasets: [{
+                label: 'Planned Upgrades',
+                data: [2, 1, 3, 1],
+                backgroundColor: '#2563eb'
+            }]
+        },
+        options: {
+            plugins: { legend: {display: false}},
+            scales: { y: {beginAtZero: true, max:4 }, x: {ticks:{color:'#555'}} }
+        }
+    });
+    // Pie for alerts by type
+    new Chart(document.getElementById('alertsPie').getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: ['Capacity','Failure'],
+            datasets: [{
+                data: [3,1],
+                backgroundColor: ['#fbbf24','#e11d48']
+            }]
+        },
+        options: {
+            plugins: { legend: {display: true, position:'bottom'}}
+        }
+    });
+    </script>
 </body>
 </html>

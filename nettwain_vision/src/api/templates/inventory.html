@@ -4,31 +4,75 @@
     <meta charset="UTF-8">
     <title>Inventory Demo</title>
     <link rel="stylesheet" href="/static/demo.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .charts-flex { display: flex; flex-wrap: wrap; gap: 2em; }
+        .inventory-card { background: #fff; border-radius: 1em; box-shadow: 0 2px 8px rgba(24,24,27,0.07); padding: 1.25em 1.5em; flex: 1 1 340px; min-width: 320px; }
+        @media (prefers-color-scheme: dark) {
+            .inventory-card { background: #18181b; color: #f4f4f5; }
+        }
+    </style>
 </head>
 <body>
     <div class="main">
         <h1>Inventory</h1>
-        <div class="card secondary">
-            <b>Digital Twin Inventory Table (Preview)</b><br>
-            <table border="1" cellpadding="4">
-                <tr>
-                    <th>ID</th><th>Name</th><th>Status</th><th>Availability</th>
-                </tr>
-                <tr>
-                    <td>A1</td><td>Central Hub</td><td>Active</td><td>98.3%</td>
-                </tr>
-                <tr>
-                    <td>A2</td><td>North Node</td><td>Active</td><td>96.9%</td>
-                </tr>
-                <tr>
-                    <td>A3</td><td>East Node</td><td>Planned</td><td>-</td>
-                </tr>
-                <tr>
-                    <td>A4</td><td>South Node</td><td>Active</td><td>97.5%</td>
-                </tr>
-            </table>
+        <div class="charts-flex">
+            <div class="inventory-card">
+                <b>Status Breakdown</b>
+                <canvas id="statusPie" height="170"></canvas>
+                <div style="font-size: 0.95em; color: #888; margin-top:.3em;">Inventory by status</div>
+            </div>
+            <div class="inventory-card">
+                <b>Availability per Site</b>
+                <canvas id="availBar" height="170"></canvas>
+                <div style="font-size: 0.95em; color: #888; margin-top:.3em;">Currently active/Planned</div>
+            </div>
+        </div>
+        <div class="inventory-card" style="margin-top:2em;">
+            <b>Quick Stats</b>
+            <ul>
+                <li>Total twins: <b>4</b></li>
+                <li>Active: <span style="color:#22c55e">3</span>, Planned: <span style="color:#2563eb">1</span></li>
+                <li>Highest Availability: <b>98.3%</b> (Central Hub)</li>
+            </ul>
             <a href="/" class="btn">Back to Landing</a>
         </div>
     </div>
+    <script>
+        // Pie for status
+        new Chart(document.getElementById('statusPie').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Planned'],
+                datasets: [{
+                    data: [3,1],
+                    backgroundColor: ['#22c55e','#2563eb'],
+                }]
+            },
+            options: {
+                cutout: '70%',
+                plugins: { legend: { display: true, position: 'bottom' } }
+            }
+        });
+        // Bar for availability by site
+        new Chart(document.getElementById('availBar').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Central Hub','North Node','East Node','South Node'],
+                datasets: [{
+                    label: 'Availability (%)',
+                    data: [98.3, 96.9, null, 97.5],
+                    backgroundColor: ['#2563eb','#2563eb','#fbbf24','#2563eb'],
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, max: 100 },
+                    x: { ticks: { color: '#555' }}
+                }
+            }
+        });
+    </script>
 </body>
 </html>
