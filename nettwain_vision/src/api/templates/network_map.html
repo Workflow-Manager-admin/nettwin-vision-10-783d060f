@@ -4,63 +4,293 @@
     <meta charset="UTF-8">
     <title>Network Map Demo</title>
     <link rel="stylesheet" href="/static/demo.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <style>
-        .network-card { background: #fff; border-radius: 1em; box-shadow: 0 2px 7px rgba(24,24,27,0.08); padding: 1.25em 1.5em; }
-        .map-legend { margin-top:1.4em; margin-bottom:.8em; }
-        .map-legend span { display:inline-block; margin-right:2em; font-size:0.96em; }
+        .network-card { background: #fff; border-radius: 1em; box-shadow: 0 2px 10px rgba(24,24,27,0.13); padding: 1.2em 1.2em 1.6em 1.2em; max-width: 990px; margin: 2.2em auto; }
+        #map { width: 800px; height: 540px; border-radius: 1em; margin: 0 auto; box-shadow: 0 4px 34px 2px rgba(100,128,250,0.14);}
+        .map-legend { margin-top: 0.7em; margin-bottom: 1.1em;}
+        .map-legend span { display:inline-block; margin-right:2em; font-size:0.98em; }
         .color-dot { display:inline-block; width:12px; height:12px; border-radius:6px; vertical-align:middle; margin-right:0.4em;}
-        @media (prefers-color-scheme: dark) { .network-card { background: #18181b; color: #f4f4f5; } }
+        .layer-controls { font-size:1em; margin:0.5em 0 1.3em 0; }
+        .layer-controls label { margin-right:1.2em; font-weight:500;}
+        .site-3d, .link-3d {
+            filter: drop-shadow(0 6px 8px rgba(60,80,160,0.19));
+            cursor: pointer;
+            transition: transform 0.19s, filter 0.15s;
+        }
+        .site-3d.demo-hover, .link-3d.demo-hover {
+            transform: scale(1.12) translateY(-6px);
+            filter: drop-shadow(0 12px 20px rgba(37,99,235,0.45));
+            z-index: 30 !important;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius:1em; background:#fff6e6; color:#222; box-shadow:0 8px 24px rgba(100,50,24,0.09)!important; border:2.5px solid #fbbf24;
+        }
+        .leaflet-popup-tip { background:#fbbf24; }
+        @media (prefers-color-scheme: dark) {
+            .network-card { background: #18181b; color: #f4f4f5; }
+            .leaflet-container { background: #222; }
+            .leaflet-popup-content-wrapper { background: #292a2e; color: #fbbf24;}
+        }
+        @media (max-width: 920px) {
+            #map { width: 96vw; height: 63vw; max-height:500px; }
+        }
+        @media (max-width: 600px) {
+            #map { width:99vw; height:70vw;min-height:320px; }
+            .network-card {padding:.55em;}
+        }
     </style>
 </head>
 <body>
     <div class="main">
         <h1>Network Map</h1>
         <div class="network-card accent">
-            <b>Network Topology Demo</b>
+            <b style="font-size:1.14em;">Digital Twin - 3D Interactive Network Map</b>
             <div class="map-legend">
                 <span><span class="color-dot" style="background:#2563eb"></span>Active Site</span>
-                <span><span class="color-dot" style="background:#fbbf24"></span>Planned Site/Alerted Link</span>
+                <span><span class="color-dot" style="background:#fbbf24"></span>Planned Site/Planned/Alerted Link</span>
                 <span><span class="color-dot" style="background:#22c55e"></span>Active Link</span>
                 <span><span class="color-dot" style="background:#e11d48"></span>Degraded Link</span>
             </div>
-            <div style="overflow:auto; width:max-content;">
-            <!-- Inline SVG for network map -->
-            <svg id="netMapSvg" viewBox="0 0 480 300" width="450" height="280">
-                <!-- Sites -->
-                <circle cx="240" cy="120" r="25" fill="#2563eb" /> <!-- Central Hub -->
-                <text x="230" y="115" fill="#fff" font-size="1.2em">A1</text>
-                <text x="222" y="145" font-size="0.92em">Central Hub</text>
-
-                <circle cx="100" cy="50" r="19" fill="#2563eb" />
-                <text x="91" y="45" fill="#fff" font-size="1em">A2</text>
-                <text x="60" y="75" font-size="0.9em">North Node</text>
-
-                <circle cx="375" cy="60" r="18" fill="#fbbf24"/>
-                <text x="367" y="56" fill="#fff" font-size="1em">A3</text>
-                <text x="350" y="86" font-size="0.9em">East Node</text>
-
-                <circle cx="170" cy="240" r="19" fill="#2563eb"/>
-                <text x="161" y="235" fill="#fff" font-size="1em">A4</text>
-                <text x="135" y="265" font-size="0.9em">South Node</text>
-
-                <!-- Links -->
-                <line x1="240" y1="120" x2="100" y2="50" stroke="#e11d48" stroke-width="5" />
-                <line x1="240" y1="120" x2="375" y2="60" stroke="#22c55e" stroke-width="4" />
-                <line x1="100" y1="50" x2="170" y2="240" stroke="#22c55e" stroke-width="4" />
-                <line x1="170" y1="240" x2="375" y2="60" stroke="#fbbf24" stroke-width="4" stroke-dasharray="8 4"/>
-                <!-- Link Legends -->
-                <circle cx="245" cy="90" r="7" fill="#e11d48"/>
-                <text x="256" y="95" font-size="0.88em" fill="#e11d48">Degraded</text>
-                <circle cx="367" cy="110" r="7" fill="#fbbf24"/>
-                <text x="376" y="115" font-size="0.88em" fill="#fbbf24">Planned</text>
-            </svg>
+            <!-- FILTER & LAYER CONTROLS -->
+            <div class="layer-controls" id="layerControls">
+                <!-- JS will populate options via API -->
+                <b>Filters:</b>
+                <label><input type="checkbox" value="active" checked> Active Sites</label>
+                <label><input type="checkbox" value="planned" checked> Planned Sites</label>
+                <label><input type="checkbox" value="util_high" checked> High Utilization Links</label>
             </div>
-            <div style="margin-top:1em;color:#888;">
-                <b>Legend:</b> Click on nodes or links (interactive in MVP) for details/alerts<br>
-                <span style="font-size:0.93em;">(This graphic is a demo: interactive overlays for infra/alerts in MVP.)</span>
+            <div id="map"></div>
+            <div style="margin-top:1em;color:#888; text-align:right;">
+                <b>Tip:</b> Hover for info, click to drill details. Filters toggle layers. Impressive demo ready!
             </div>
             <a href="/" class="btn" style="margin-top:1.5em;">Back to Dashboard</a>
         </div>
     </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+    // ---- 1. Basemap Setup ----
+    // Seattle reference: [47.62, -122.33]
+    let map = L.map('map', {
+        center: [47.62, -122.33],
+        zoom: 12.9,
+        minZoom: 9,
+        scrollWheelZoom: true,
+        preferCanvas: true,
+        zoomControl: true,
+        attributionControl: false,
+    });
+    // Try OpenStreetMap as base, fallback static tile on error
+    let tiles = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: 'Map &copy; OSM contributors'
+    });
+    tiles.on("tileerror", function() {
+        // Fallback to static image
+        let fallbackDiv = document.createElement("div");
+        fallbackDiv.style.cssText = "background: #ddd; color:#333; font-size:1.2em; width:100%;height:99%;display:flex;align-items:center;justify-content:center;border-radius:1em;position:absolute;z-index:10;";
+        fallbackDiv.textContent = "Map unavailable (offline demo)";
+        document.getElementById("map").appendChild(fallbackDiv);
+    });
+    tiles.addTo(map);
+
+    // ---- 2. Color/Status Palettes ----
+    const COLORS = {
+        active: '#2563eb', planned: '#fbbf24', degraded: '#e11d48', link: '#22c55e'
+    };
+
+    // ---- 3. Demo Data: Sites, Links, Overlays (from mock API) ----
+    let netData = {
+        sites: [
+            {id:'A1', name:'Central Hub', lat:47.6101, lng:-122.342, status:'active'},
+            {id:'A2', name:'North Node', lat:47.6532, lng:-122.305, status:'active'},
+            {id:'A3', name:'East Node', lat:47.625, lng:-122.276, status:'planned'},
+            {id:'A4', name:'South Node', lat:47.596, lng:-122.334, status:'active'},
+        ],
+        links: [
+            {source:'A1', target:'A2', utilization_pct:87, status:'degraded'},
+            {source:'A1', target:'A3', utilization_pct:66, status:'active'},
+            {source:'A2', target:'A4', utilization_pct:71, status:'active'},
+            {source:'A4', target:'A3', utilization_pct:43, status:'planned'},
+        ],
+        overlays: [
+            {type:'risk', description:'High utilization', color:COLORS.planned, affected_links:['A1-A2']}
+        ]
+    };
+
+    // ---- 4. Layer State ----
+    let filterState = { active: true, planned: true, util_high: true };
+
+    // Try to auto-load filters from backend
+    fetch("/api/v1/map/filters").then(r=>r.json()).then(r=>{
+        if(r.filters) {
+            // Render dynamic filter controls
+            document.getElementById('layerControls').innerHTML = '<b>Filters:</b> ' +
+                r.filters.map(f =>
+                `<label><input type="checkbox" value="${f.value}" ${f.default?"checked":""}/> ${f.label}</label>`
+                ).join(" ");
+            // Hook up listeners
+            document.querySelectorAll("#layerControls input[type=checkbox]").forEach(el=>{
+                el.onchange = ()=> { filterState[el.value] = el.checked; renderOverlays(); }
+            });
+        }
+    });
+
+    // ---- 5. Fetch (Mock) Data for Sites/Links ----
+    // Real: fetch('/api/v1/map').then(resp => resp.json()).then(setupData);
+    // Here we use netData from mock above (for robustness/offline demo).
+    function getSiteById(id) { return netData.sites.find(s=>s.id===id); }
+
+    // ---- 6. Overlays as SVG pseudo-3D ----
+    let svgLayer, sitesGroup, linksGroup;
+    function renderOverlays() {
+        // Remove old overlay
+        if(svgLayer) { map.removeLayer(svgLayer);}
+        // Custom SVG pane above tiles
+        map.createPane('data-overlay');
+        svgLayer = L.svg({pane:'data-overlay'});
+        svgLayer.addTo(map);
+
+        let svg = d3.select(svgLayer._container);
+        svg.html(""); // clear
+        linksGroup = svg.append('g').attr("class","links-3d");
+        sitesGroup = svg.append('g').attr("class","sites-3d");
+
+        // --- Links: colored, pseudo-3D with gradient/blur ---
+        for(let link of netData.links) {
+            // Filters
+            if(!filterState.util_high && link.utilization_pct>=70 && link.status!=="planned") continue;
+            if(!filterState.planned && link.status === "planned") continue;
+            // Points
+            let A = map.latLngToLayerPoint([getSiteById(link.source).lat, getSiteById(link.source).lng]);
+            let B = map.latLngToLayerPoint([getSiteById(link.target).lat, getSiteById(link.target).lng]);
+            // Pseudo-3D: offset shadow, main line, highlight
+            // "degraded" = thick/red, "planned" = dashed/accent, "active" = green
+            let line = linksGroup.append("line")
+                .attr("x1",A.x).attr("y1",A.y)
+                .attr("x2",B.x).attr("y2",B.y)
+                .attr("stroke", link.status==="degraded" ? COLORS.degraded : link.status==="planned" ? COLORS.planned : COLORS.link)
+                .attr("stroke-width", link.status==="degraded"?7:(link.status==="planned"?6:5))
+                .attr("opacity", link.status==="planned"?0.70:0.97)
+                .attr("class","link-3d")
+                .attr("stroke-dasharray", link.status==="planned"?"12 6":"")
+                .style("filter","url(#blur1)");
+            // Glow via SVG filter
+            svg.append('defs').html(`
+                <filter id="blur1">
+                    <feGaussianBlur stdDeviation="2.6" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            `);
+
+            // Interactivity
+            line.on("mouseover",()=>{ line.classed("demo-hover",true); showLinkPopup(link,A,B);})
+                .on("mouseout",()=>{ line.classed("demo-hover",false); hidePopup();});
+        }
+
+        // --- Sites: pseudo-3D circles/cylinders ---
+        for(let site of netData.sites) {
+            if(site.status==="active" && !filterState.active) continue;
+            if(site.status==="planned" && !filterState.planned) continue;
+            let pt = map.latLngToLayerPoint([site.lat,site.lng]);
+            // Main body, lifted effect for 3D demo
+            let group = sitesGroup.append("g").attr("class","site-group");
+            // Pseudo 3D: base ellipse (shadow)
+            group.append("ellipse")
+                .attr("cx", pt.x).attr("cy", pt.y+19)
+                .attr("rx", 25).attr("ry", 9)
+                .attr("fill", "#000").attr("opacity", 0.20);
+            // Body cylinder (top)
+            group.append("ellipse")
+                .attr("cx", pt.x).attr("cy", pt.y)
+                .attr("rx",22).attr("ry",15)
+                .attr("fill", site.status==="planned"?COLORS.planned:COLORS.active)
+                .attr("filter","url(#blur1)");
+            // 3D side gradient
+            group.append("ellipse")
+                .attr("cx", pt.x+6).attr("cy", pt.y+2).attr("rx",10).attr("ry",13)
+                .attr("fill", "rgba(255,255,255,0.18)");
+            // Site id
+            group.append("text")
+                .attr("x", pt.x-12).attr("y", pt.y+5)
+                .text(site.id)
+                .attr("font-size","1.13em")
+                .attr("fill",site.status==="planned"?"#333":"#fff")
+                .attr("font-weight",600)
+                .attr("filter",site.status==="planned"?"":"url(#blur1)");
+            // Click/hover interactivity
+            group.attr("class","site-3d")
+                .style("cursor","pointer")
+                .on("mouseover",()=>{
+                    group.classed("demo-hover",true);
+                    showSitePopup(site,pt);
+                })
+                .on("mouseout",()=>{
+                    group.classed("demo-hover",false);
+                    hidePopup();
+                });
+        }
+    }
+    // Initial SVG (after map init)
+    setTimeout(renderOverlays, 340);
+
+    // On move/zoom, restore overlays
+    map.on("zoomend moveend resize", renderOverlays);
+
+    // ---- 7. Tooltips / Popups (lightweight for demo) ----
+    let lastPopup = null;
+    function showSitePopup(site, pt){
+        let content = `<b>${site.name}</b><br>ID: <code>${site.id}</code><br>
+            Status: <span style="color:${site.status==='planned'?COLORS.planned:COLORS.active}">${site.status}</span><br>
+            <i>Lat:</i> ${site.lat.toFixed(4)}, <i>Lng:</i> ${site.lng.toFixed(4)}<br>
+            <a href="/inventory" class="link-drill" style="color:${COLORS.active}">View Inventory &rarr;</a>`;
+        openLeafletPopup(content, pt);
+    }
+    function showLinkPopup(link, A, B){
+        let s = getSiteById(link.source), t = getSiteById(link.target);
+        let content = `<b>Link: ${s.id} ↔ ${t.id}</b><br>
+            <span style="color:${link.status==='degraded'?COLORS.degraded:(link.status==='planned'?COLORS.planned:COLORS.link)};font-weight:600;">
+                ${link.status.toUpperCase()}
+            </span>, Utilization: <b>${link.utilization_pct}%</b><br>
+            <span style="font-size:0.97em;">From: <b>${s.name}</b> &rarr; <b>${t.name}</b></span>`;
+        // Pop up midway
+        let pt = {x:(A.x+B.x)/2, y:(A.y+B.y)/2};
+        openLeafletPopup(content, pt);
+    }
+    function openLeafletPopup(html, pt) {
+        hidePopup();
+        let containerPt = map.layerPointToLatLng([pt.x,pt.y]);
+        lastPopup = L.popup({closeButton:true, maxWidth:260, offset:[0,-10]})
+            .setLatLng(containerPt).setContent(html).openOn(map);
+    }
+    function hidePopup(){ if(lastPopup){ map.closePopup(); lastPopup=null; } }
+
+    // ---- 8. D3 Loader (inline if not present) ----
+    // Prefer using built-in, but fallback if not loaded
+    (function(){
+        if(window.d3) return;
+        let s=document.createElement('script');
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js";
+        s.onload = renderOverlays;
+        document.body.appendChild(s);
+    })();
+
+    // ---- 9. Theming (matching dashboard auto/light/dark) ----
+    (function(){
+        const colorMode = document.documentElement.getAttribute("data-theme") || "auto";
+        if(colorMode==="auto" && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.style.background = "#18181b";
+        }
+    })();
+
+    </script>
+    <noscript>
+      <div style="color: #b91c1c;background:#ffe5e5; border-radius:1em; padding:1em 2em; max-width:500px;margin:2em auto;text-align:center;">
+          This page needs JavaScript to display the interactive network map and overlays. Please enable it for best experience.
+      </div>
+    </noscript>
 </body>
 </html>
