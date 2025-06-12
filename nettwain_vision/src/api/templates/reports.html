@@ -6,74 +6,204 @@
     <link rel="stylesheet" href="/static/demo.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .report-card {background:#fff; border-radius:1em; box-shadow:0 2px 10px rgba(24,24,27,0.07); padding:1.5em 1.8em; margin-bottom:2em;}
-        .charts-row {display:flex; flex-wrap:wrap; gap:2em;}
-        .chart-wrap {flex:1 1 320px; min-width:300px;}
-        .exports-list {font-size:1.04em; margin-top:1em;}
-        .report-download {margin:0.6em 0 0 0;}
-        @media (prefers-color-scheme: dark) { .report-card { background: #18181b; color: #f4f4f5; } }
+        :root { --primary: #2563eb; --accent: #fbbf24; --secondary: #0f172a; }
+        .main { margin-left: 230px; padding: 2.1em 2em 2.6em 2em; max-width:1400px;}
+        .sidebar { background: var(--sidebar-bg, #f8fafc); width: 220px; min-height: 100vh; float: left; padding: 2em 1.2em 1em 1.2em; color: var(--secondary);}
+        .report-card {background:#fff; border-radius:1em; box-shadow:0 2px 10px rgba(24,24,27,0.09); padding:1.5em 1.8em; margin-bottom:2em;}
+        .main h1 {font-size:2.2em; font-weight:750;}
+        .charts-row {display:flex; flex-wrap:wrap; gap:2.9em; margin:1.3em 0 1.4em 0;}
+        .chart-wrap {flex:1 1 350px; min-width:310px; background:#f6f8ff; border-radius:.75em; padding:.8em 1.1em 1em 1.1em;}
+        .chart-title { font-size:1.08em; color: var(--primary); margin-bottom:.36em;}
+        .metrics-bar {display:flex; gap:2em; flex-wrap:wrap; margin-bottom:1.2em;}
+        .key-metric-box {
+            background: #e7ecff;
+            border-radius: .7em;
+            font-size: 1.04em;
+            padding: .71em 1.3em;
+            color: var(--primary);
+            font-weight: 700;
+            display: flex; align-items: center; gap: .7em;
+            margin-bottom:.7em;
+        }
+        .key-metric-box .head {font-size:.96em; color:#111;font-weight:500;}
+        .exports-list {font-size:1.05em; margin:.6em 0 1.4em 0; }
+        .exports-list li {margin-bottom:.5em;}
+        .report-download {margin:1em 0 0 0;}
+        .table-block {margin:1.5em 0 2.4em 0; border-radius:.75em; overflow-x:auto; background:#fff; box-shadow:0 1.5px 7px rgba(37,99,235,0.05);}
+        table.rep-table {
+            width:100%; border-collapse:collapse; min-width:540px; font-size:1.03em;
+        }
+        .rep-table th, .rep-table td { padding: .5em 1em; border-bottom: 1.2px solid #ededed;}
+        .rep-table th { background: #f7fafe; font-weight:600; color:var(--primary);}
+        .rep-table td.status-Active {color:#22c55e;font-weight:600;}
+        .rep-table td.status-Planned {color:#2563eb;font-weight:600;}
+        .rep-table td.status-Degraded {color:#e11d48;font-weight:600;}
+        .rep-table td.alert-cell {color:#e11d48;}
+        .rep-table tr:last-child td { border-bottom: none; }
+        .btn-link { background: var(--primary); color: #fff; border:none; border-radius:5px; padding:.58em 1.2em; cursor:pointer; font-size:1.07em; font-weight:500;}
+        .btn-link.accent { background: var(--accent); color:#222;}
+        .back-link {margin-top:2.2em;}
+        @media (prefers-color-scheme: dark) {
+            body {background: #172033; color: #f4f4f5;}
+            .sidebar {background: var(--sidebar-bg-dark,#0f172a); color: #fbbf24;}
+            .main {background: #18181b;}
+            .report-card {background: #18181b; color: #f4f4f5;}
+            .chart-title {color: var(--accent);}
+            .chart-wrap {background:#222533;}
+            .key-metric-box {background:#252f44;color:#fbbf24;}
+            .rep-table th {background:#18244a; color:#fbbf24;}
+            .table-block {background:#18181b;}
+        }
+        @media (max-width: 1100px) {
+            .main {padding: 1.15em 0.4em;}
+            .charts-row, .metrics-bar {flex-direction:column;}
+            .chart-wrap, .table-block {max-width:98vw;}
+        }
+        @media (max-width:650px) {
+            .main {margin-left: 0; padding: 0.7em 0.2em;}
+            .sidebar {display:none;}
+        }
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        <h2 style="color: var(--primary); font-size: 1.15em; margin-bottom:2em;">NetTwin Vision-10</h2>
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/map">Network Map</a>
+            <a href="/planning">Planning Wizard</a>
+            <a href="/inventory">Inventory</a>
+            <a href="/reports" style="color:var(--accent);font-weight:700;">Reports</a>
+            <a href="/api/v1/ui/theme">UI Theme</a>
+        </nav>
+        <div style="position: fixed; bottom: 2em; left: 1em; width: 180px;">
+            <a href="/docs" style="color: #888; display: block; border-top:1px solid #eee; padding-top:0.8em; margin-top:0.8em; text-align:left;">API Docs</a>
+        </div>
+    </div>
     <div class="main">
-        <h1>Reports</h1>
-        <div class="report-card primary">
-            <b>Planning Summary Reports</b>
+        <h1>Reports & Insights</h1>
+        <div class="report-card">
+            <!-- Quick metrics -->
+            <div class="metrics-bar">
+                <div class="key-metric-box"><span class="head">Upgrades Planned:</span> <span id="kpiUpg">7</span></div>
+                <div class="key-metric-box"><span class="head">Current Alerts:</span> <span id="kpiAlerts">2</span></div>
+                <div class="key-metric-box"><span class="head">Inventory:</span> <span id="kpiInv">4 sites</span></div>
+                <div class="key-metric-box"><span class="head">Highest Uptime:</span> <span id="kpiUptime">98.3%</span></div>
+            </div>
+            <!-- Charts -->
             <div class="charts-row">
                 <div class="chart-wrap">
-                    <b>Planned Upgrades per Quarter</b>
-                    <canvas id="upgradeBar" height="130"></canvas>
+                    <div class="chart-title">Planned Upgrades per Quarter</div>
+                    <canvas id="upgradeBar" height="127"></canvas>
                 </div>
                 <div class="chart-wrap">
-                    <b>Alerts by Type</b>
-                    <canvas id="alertsPie" height="130"></canvas>
+                    <div class="chart-title">Alerts by Type</div>
+                    <canvas id="alertsPie" height="127"></canvas>
                 </div>
             </div>
+            <div class="charts-row">
+                <div class="chart-wrap">
+                    <div class="chart-title">Upgrades Table</div>
+                    <div class="table-block">
+                        <table class="rep-table" id="repTable">
+                            <thead>
+                                <tr>
+                                    <th>Site</th>
+                                    <th>Status</th>
+                                    <th>Planned Upgrades</th>
+                                    <th>Alerts</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Export/Download -->
             <div class="exports-list">
                 <b>Available Reports:</b>
                 <ul>
                     <li>Site Planning Report (<a href="/static/mock_site_report.csv" target="_blank">CSV</a> / <a href="/static/mock_site_report.pdf" target="_blank">PDF</a>)</li>
                     <li>Utilization Summary</li>
-                    <li>Risk & Alerts Report</li>
+                    <li>Risk &amp; Alerts Report</li>
                 </ul>
             </div>
             <div class="report-download">
-                <button onclick="alert('Demo download initiated!');" style="background:var(--primary);color:#fff;border:none;border-radius:5px;padding:.5em 1.2em;cursor:pointer;">Download Current Report</button>
+                <button onclick="alert('Demo report download initiated!');" class="btn-link">Download Current Report</button>
+                <button onclick="alert('Download as PDF! (demo)');" class="btn-link accent" style="margin-left:.9em;">Export as PDF</button>
             </div>
-            <a href="/" class="btn" style="margin-top:2em;">Back to Dashboard</a>
+            <a href="/" class="btn-link back-link" style="display:inline-block;">Back to Dashboard</a>
         </div>
     </div>
     <script>
-    // Bar for upgrades per quarter
-    new Chart(document.getElementById('upgradeBar').getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-            datasets: [{
-                label: 'Planned Upgrades',
-                data: [2, 1, 3, 1],
-                backgroundColor: '#2563eb'
-            }]
-        },
-        options: {
-            plugins: { legend: {display: false}},
-            scales: { y: {beginAtZero: true, max:4 }, x: {ticks:{color:'#555'}} }
+        // Demo robust mock data
+        const reportData = {
+            upgrades: [2, 1, 3, 1], // per Q1..Q4
+            quarters: ["Q1", "Q2", "Q3", "Q4"],
+            alerts: ["Capacity", "Failure"],
+            alertValues: [3, 1],
+            table: [
+                {site:"Central Hub", status:"Active", planned:1, alerts:0},
+                {site:"North Node", status:"Active", planned:2, alerts:1},
+                {site:"East Node", status:"Planned", planned:1, alerts:1},
+                {site:"South Node", status:"Active", planned:3, alerts:0},
+            ],
+            kpis: { upgrades:7, alerts:2, inventory:4, uptime:98.3 }
+        };
+
+        // Inject KPIs
+        document.getElementById("kpiUpg").textContent = reportData.kpis.upgrades;
+        document.getElementById("kpiAlerts").textContent = reportData.kpis.alerts;
+        document.getElementById("kpiInv").textContent = `${reportData.kpis.inventory} sites`;
+        document.getElementById("kpiUptime").textContent = (reportData.kpis.uptime || "-") + "%";
+
+        // Bar for upgrades per quarter
+        let upgradeBar = new Chart(document.getElementById('upgradeBar').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: reportData.quarters,
+                datasets: [{
+                    label: 'Planned Upgrades',
+                    data: reportData.upgrades,
+                    backgroundColor: '#2563eb'
+                }]
+            },
+            options: {
+                plugins: { legend: {display: false}},
+                scales: { y: {beginAtZero: true, max: Math.max(...reportData.upgrades)+1 }, x: {ticks:{color:'#555'}} }
+            }
+        });
+        // Pie for alerts by type
+        let alertsPie = new Chart(document.getElementById('alertsPie').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: reportData.alerts,
+                datasets: [{
+                    data: reportData.alertValues,
+                    backgroundColor: ['#fbbf24','#e11d48']
+                }]
+            },
+            options: {
+                plugins: { legend: {display: true, position:'bottom'}}
+            }
+        });
+
+        // Table
+        function renderRepTable(list) {
+            let tb = document.querySelector("#repTable tbody");
+            tb.innerHTML = "";
+            for (const row of list) {
+                tb.innerHTML += `<tr>
+                    <td>${row.site}</td>
+                    <td class="status-${row.status}">${row.status}</td>
+                    <td>${row.planned}</td>
+                    <td class="alert-cell">${row.alerts}</td>
+                </tr>`
+            }
         }
-    });
-    // Pie for alerts by type
-    new Chart(document.getElementById('alertsPie').getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: ['Capacity','Failure'],
-            datasets: [{
-                data: [3,1],
-                backgroundColor: ['#fbbf24','#e11d48']
-            }]
-        },
-        options: {
-            plugins: { legend: {display: true, position:'bottom'}}
-        }
-    });
+        renderRepTable(reportData.table);
     </script>
 </body>
 </html>

@@ -6,16 +6,170 @@
     <link rel="stylesheet" href="/static/demo.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .charts-flex { display: flex; flex-wrap: wrap; gap: 2em; }
-        .inventory-card { background: #fff; border-radius: 1em; box-shadow: 0 2px 8px rgba(24,24,27,0.07); padding: 1.25em 1.5em; flex: 1 1 340px; min-width: 320px; }
+        :root {
+            --primary: #2563eb;
+            --accent: #fbbf24;
+            --secondary: #0f172a;
+            --card-radius: 1em;
+        }
+        body { background: #f8fafc; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; color: #172033; }
+        .sidebar {
+            background: var(--sidebar-bg, #f8fafc);
+            width: 220px;
+            min-height: 100vh;
+            float: left;
+            padding: 2em 1.2em 1em 1.2em;
+            color: var(--secondary);
+            box-sizing: border-box;
+        }
+        .main {
+            margin-left: 230px;
+            padding: 2em 2.2em;
+            max-width: 1450px;
+            min-height: 100vh;
+        }
+        .inv-headline {font-size: 2.1rem; font-weight: 750; color: var(--primary);}
+        .inventory-kpis {display: flex; gap: 2em; flex-wrap: wrap; margin: 1.4em 0 1.7em 0;}
+        .kpi-box {
+            background: #fff;
+            border-radius: var(--card-radius);
+            box-shadow: 0 1.5px 8px rgba(37,99,235,0.08);
+            padding: 0.8em 2.4em 0.8em 1.4em;
+            min-width: 188px;
+            flex: 1 1 190px;
+            margin-bottom: .9em;
+            position: relative;
+        }
+        .kpi-title { font-size:1.12em; color: var(--primary); font-weight:600;}
+        .kpi-value { font-size:1.89em; font-weight:700;}
+        .kpi-sub { font-size:.96em; color:#888; }
+        .kpi-dot {width:13px; height:13px; border-radius:6.5px; display:inline-block; margin-right:.48em; vertical-align:middle;}
+        .kpi-dot.active {background:#22c55e;}
+        .kpi-dot.planned {background:#2563eb;}
+        .kpi-dot.degraded {background:#fbbf24;}
+        .charts-flex { display: flex; flex-wrap: wrap; gap: 2.6em;}
+        .inventory-card {
+            background: #fff;
+            border-radius: 1em;
+            box-shadow: 0 2px 8px rgba(24,24,27,0.07);
+            padding: 1.35em 1.4em 1.13em 1.4em;
+            flex: 1 1 380px;
+            min-width: 335px;
+        }
+        .svg-mini-map { display: block; margin: 0 auto .65em auto; }
+        .adv-table-wrap {
+            background: #fff;
+            border-radius: .85em;
+            box-shadow: 0 1.5px 8px rgba(37,99,235,0.065);
+            padding: 1em 1.1em;
+            margin: 2.5em 0 0 0;
+            overflow-x: auto;
+        }
+        table.inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 590px;
+            font-size: 1.01em;
+        }
+        .inventory-table th, .inventory-table td {
+            padding: .56em .9em;
+            border-bottom: 1.2px solid #ededed;
+            text-align: left;
+        }
+        .inventory-table th {
+            background: #f7fafe;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .inventory-table tr:last-child td { border-bottom: none; }
+        .inventory-table td.status-active { color: #22c55e; font-weight: 600;}
+        .inventory-table td.status-planned { color: #2563eb; font-weight: 600;}
+        .inventory-table td.status-degraded { color: #e11d48; font-weight: 600;}
+        .inventory-table td[data-kpi] {text-align:right;}
+        .filter-bar {
+            margin: .3em 0 1.1em 0;
+            display: flex;
+            gap: 1em;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-bar label { font-size: 0.98em; color: #2563eb; font-weight:600; margin-right:.6em;}
+        .filter-bar select, .filter-bar input[type="search"] {
+            font-size: 1em; border: 1.2px solid #cbd5e1; border-radius: .6em; padding: .40em 1.1em; margin-right: .8em;
+        }
+        .filter-bar input[type="search"] { min-width: 170px; }
+        .btn-link {
+            background: var(--primary); color:#fff;
+            padding: .53em 1.3em; border: none; border-radius: .7em;
+            text-decoration:none; font-weight:500; font-size:1.05em;
+            transition: background 0.14s; margin-left: 1.5em;
+        }
+        .btn-link.secondary { background: var(--secondary); }
+        .summary-section {margin-top:1.9em;font-size:1.04em;}
+        .key-metric { font-weight:600; color: var(--primary);}
         @media (prefers-color-scheme: dark) {
-            .inventory-card { background: #18181b; color: #f4f4f5; }
+            body {background: #172033; color:#f4f4f5;}
+            .sidebar {background: var(--sidebar-bg-dark,#0f172a); color: #fbbf24;}
+            .main {background: #18181b;}
+            .inventory-card, .adv-table-wrap { background: #18181b; color:#f4f4f5;}
+            .kpi-title {color: var(--accent);}
+            .inventory-table th {background:#18244a; color:#fbbf24;}
+            .inventory-kpis {background: #172033;}
+        }
+        @media (max-width: 1100px) {
+            .main { padding: 1.2em .5em;}
+            .charts-flex, .inventory-kpis { flex-direction: column;}
+        }
+        @media (max-width:650px) {
+            .main {margin-left: 0; padding: 1em .2em;}
+            .sidebar {display:none;}
         }
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        <h2 style="color: var(--primary); font-size: 1.15em; margin-bottom:2em;">NetTwin Vision-10</h2>
+        <nav>
+            <a href="/" style="color: var(--primary);font-weight:600;">Dashboard</a>
+            <a href="/map">Network Map</a>
+            <a href="/planning">Planning Wizard</a>
+            <a href="/inventory" style="color:var(--accent)">Inventory</a>
+            <a href="/reports">Reports</a>
+            <a href="/api/v1/ui/theme">UI Theme</a>
+        </nav>
+        <div style="position: fixed; bottom: 2em; left: 1em; width: 180px;">
+            <a href="/docs" style="color: #888; display: block; border-top:1px solid #eee; padding-top:0.8em; margin-top:0.8em; text-align:left;">API Docs</a>
+        </div>
+    </div>
     <div class="main">
-        <h1>Inventory</h1>
+        <div class="inv-headline">Digital Twin Inventory <span class="kpi-dot planned"></span></div>
+        <div style="color:#888; font-size:1.08em; margin-bottom:.7em;">
+            View, filter, and analyze all digital twins in your network. Interactive stats, status and mini network map for demo.
+        </div>
+        <!-- Inventory KPI Cards -->
+        <div class="inventory-kpis">
+            <div class="kpi-box">
+                <div class="kpi-title"><span class="kpi-dot active"></span>Active Twins</div>
+                <div class="kpi-value" id="kpiActive">3</div>
+                <div class="kpi-sub">Live operational twins</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title"><span class="kpi-dot planned"></span>Planned Twins</div>
+                <div class="kpi-value" id="kpiPlanned">1</div>
+                <div class="kpi-sub">In upcoming/planned state</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title"><span class="kpi-dot degraded"></span>Degraded</div>
+                <div class="kpi-value" id="kpiDegraded">0</div>
+                <div class="kpi-sub">Degraded/alerts present</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title">Highest Availability</div>
+                <div class="kpi-value" id="kpiHighAvail">98.3%</div>
+                <div class="kpi-sub">Central Hub</div>
+            </div>
+        </div>
+        <!-- Charts Row + Mini Map -->
         <div class="charts-flex">
             <div class="inventory-card">
                 <b>Status Breakdown</b>
@@ -27,42 +181,167 @@
                 <canvas id="availBar" height="170"></canvas>
                 <div style="font-size: 0.95em; color: #888; margin-top:.3em;">Currently active/Planned</div>
             </div>
+            <div class="inventory-card">
+                <b>Mini Network Map</b>
+                <svg class="svg-mini-map" viewBox="0 0 250 150" width="90%" height="100">
+                    <!-- Mini network like dashboard -->
+                    <!-- Nodes -->
+                    <circle cx="120" cy="48" r="16" fill="#2563eb"/>
+                    <text x="112" y="52" fill="#fff" font-size="1em">A1</text>
+                    <circle cx="40" cy="28" r="10" fill="#2563eb"/>
+                    <text x="35" y="31" fill="#fff" font-size="0.8em">A2</text>
+                    <circle cx="200" cy="42" r="11" fill="#fbbf24"/>
+                    <text x="194" y="48" fill="#fff" font-size="0.8em">A3</text>
+                    <circle cx="60" cy="120" r="11" fill="#2563eb"/>
+                    <text x="54" y="127" fill="#fff" font-size="0.8em">A4</text>
+                    <!-- Links -->
+                    <line x1="120" y1="48" x2="40" y2="28" stroke="#e11d48" stroke-width="4"/>
+                    <line x1="120" y1="48" x2="200" y2="42" stroke="#22c55e" stroke-width="3.5"/>
+                    <line x1="40" y1="28" x2="60" y2="120" stroke="#22c55e" stroke-width="3.5"/>
+                    <line x1="60" y1="120" x2="200" y2="42" stroke="#fbbf24" stroke-width="3.5" stroke-dasharray="6 4"/>
+                    <!-- Small legend -->
+                    <circle cx="170" cy="105" r="5.1" fill="#e11d48"/>
+                    <text x="180" y="108" font-size="0.72em" fill="#e11d48">Degraded</text>
+                    <circle cx="200" cy="127" r="5.1" fill="#fbbf24"/>
+                    <text x="210" y="131" font-size="0.72em" fill="#fbbf24">Planned</text>
+                </svg>
+                <div style="font-size:0.93em; color:#aaa;">
+                    <b>Legend:</b>
+                    <span style="color:#2563eb;">Active</span>,
+                    <span style="color:#fbbf24;">Planned</span>,
+                    <span style="color:#e11d48;">Degraded</span>
+                </div>
+            </div>
         </div>
-        <div class="inventory-card" style="margin-top:2em;">
-            <b>Quick Stats</b>
-            <ul>
-                <li>Total twins: <b>4</b></li>
-                <li>Active: <span style="color:#22c55e">3</span>, Planned: <span style="color:#2563eb">1</span></li>
-                <li>Highest Availability: <b>98.3%</b> (Central Hub)</li>
-            </ul>
-            <a href="/" class="btn">Back to Dashboard</a>
+        <!-- Filter/Search Bar -->
+        <div class="filter-bar" style="margin-top:2em;margin-bottom:-.5em;">
+            <label>Status
+                <select id="statusFilter">
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="planned">Planned</option>
+                </select>
+            </label>
+            <label>Search
+                <input type="search" placeholder="Name or ID" id="searchInput">
+            </label>
+            <button class="btn-link" id="filterBtn">Filter</button>
+        </div>
+        <!-- Table: Digital Twin List -->
+        <div class="adv-table-wrap">
+            <table class="inventory-table" id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Availability</th>
+                        <th>Utilization</th>
+                        <th>Vendor</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Summary Section -->
+        <div class="summary-section" style="margin-bottom:3em;">
+            <div><span class="key-metric">Tip:</span> Click on a row for details, filtering auto-updates KPIs and charts for demo effect.</div>
+            <a href="/" class="btn-link" style="margin-top:.9em;">Back to Dashboard</a>
         </div>
     </div>
     <script>
+    // Mock data (expandable; robust)
+    const twins = [
+        {id:"A1", name:"Central Hub", type:"cell_site", status:"active", kpis:{availability:98.3, utilization:66}, vendor:"Ericsson"},
+        {id:"A2", name:"North Node", type:"cell_site", status:"active", kpis:{availability:96.9, utilization:87}, vendor:"Nokia"},
+        {id:"A3", name:"East Node", type:"cell_site", status:"planned", kpis:{}, vendor:"Huawei"},
+        {id:"A4", name:"South Node", type:"cell_site", status:"active", kpis:{availability:97.5, utilization:55}, vendor:"Ericsson"},
+    ];
+
+    // Filtering logic
+    function filterTwins(status, search) {
+        let out = twins;
+        if (status && status !== "all") {
+            out = out.filter(t => t.status === status);
+        }
+        if (search) {
+            let ss = search.trim().toLowerCase();
+            out = out.filter(t => t.name.toLowerCase().includes(ss) || t.id.toLowerCase().includes(ss));
+        }
+        return out;
+    }
+
+    function renderTable(list) {
+        const tbody = document.querySelector("#inventoryTable tbody");
+        tbody.innerHTML = "";
+        for (const t of list) {
+            const av = t.kpis?.availability !== undefined ? t.kpis.availability + "%" : "-";
+            const util = t.kpis?.utilization !== undefined ? t.kpis.utilization + "%" : "-";
+            tbody.innerHTML += `<tr tabindex="0" style="cursor:pointer" onclick="alert('Detail for ${t.name}, ID: ${t.id}\\nThis would show a modal or detail page in full app.')">
+                <td>${t.id}</td>
+                <td>${t.name}</td>
+                <td class="status-${t.status}">${t.status.charAt(0).toUpperCase() + t.status.slice(1)}</td>
+                <td data-kpi="avail">${av}</td>
+                <td data-kpi="util">${util}</td>
+                <td>${t.vendor || "-"}</td>
+                <td><button style="background: var(--primary); color: #fff; border:none; border-radius: 4px; padding:.38em 1em; cursor:pointer;">View</button></td>
+            </tr>`;
+        }
+    }
+
+    // KPI update
+    function updateKpis(list) {
+        const active = list.filter(t => t.status === "active").length;
+        const planned = list.filter(t => t.status === "planned").length;
+        const availHi = Math.max(...list.filter(t=>t.kpis && t.kpis.availability!==undefined).map(t=>t.kpis.availability),0);
+        const topSite = (list.find(t=>t.kpis && t.kpis.availability===availHi)||{}).name || "-";
+        document.getElementById("kpiActive").textContent = active;
+        document.getElementById("kpiPlanned").textContent = planned;
+        document.getElementById("kpiDegraded").textContent = "0";
+        document.getElementById("kpiHighAvail").textContent = availHi>0 ? availHi+"%" : "-";
+        document.querySelector(".kpi-box:last-child .kpi-sub").textContent = topSite || "-";
+    }
+
+    // Chart update (redraw)
+    let statusPie, availBar;
+    function updateCharts(list) {
         // Pie for status
-        new Chart(document.getElementById('statusPie').getContext('2d'), {
+        const statCounts = [
+            list.filter(t=>t.status==="active").length,
+            list.filter(t=>t.status==="planned").length
+        ];
+        if (statusPie) statusPie.destroy();
+        statusPie = new Chart(document.getElementById('statusPie').getContext('2d'), {
             type: 'doughnut',
             data: {
                 labels: ['Active', 'Planned'],
                 datasets: [{
-                    data: [3,1],
-                    backgroundColor: ['#22c55e','#2563eb'],
+                    data: statCounts,
+                    backgroundColor: ['#22c55e','#2563eb']
                 }]
             },
             options: {
                 cutout: '70%',
-                plugins: { legend: { display: true, position: 'bottom' } }
+                plugins: {
+                    legend: { display: true, position: 'bottom' }
+                }
             }
         });
         // Bar for availability by site
-        new Chart(document.getElementById('availBar').getContext('2d'), {
+        if (availBar) availBar.destroy();
+        const names = list.map(t=>t.name);
+        const avs = list.map(t=>t.kpis && t.kpis.availability !== undefined ? t.kpis.availability : null);
+        availBar = new Chart(document.getElementById('availBar').getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Central Hub','North Node','East Node','South Node'],
+                labels: names,
                 datasets: [{
                     label: 'Availability (%)',
-                    data: [98.3, 96.9, null, 97.5],
-                    backgroundColor: ['#2563eb','#2563eb','#fbbf24','#2563eb'],
+                    data: avs,
+                    backgroundColor: list.map(t=>t.status === "planned" ? '#fbbf24' : '#2563eb')
                 }]
             },
             options: {
@@ -73,6 +352,26 @@
                 }
             }
         });
+    }
+
+    function applyFilters() {
+        const statusSel = document.getElementById("statusFilter").value;
+        const searchVal = document.getElementById("searchInput").value;
+        const filtered = filterTwins(statusSel, searchVal);
+        renderTable(filtered);
+        updateKpis(filtered);
+        updateCharts(filtered);
+    }
+
+    document.getElementById("filterBtn").onclick = applyFilters;
+    document.getElementById("statusFilter").onchange = applyFilters;
+    document.getElementById("searchInput").addEventListener("keyup", function(evt){ if(evt.key==="Enter") applyFilters(); });
+
+    window.onload = function() {
+        renderTable(twins);
+        updateKpis(twins);
+        updateCharts(twins);
+    };
     </script>
 </body>
 </html>
