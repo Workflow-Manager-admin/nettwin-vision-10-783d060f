@@ -182,6 +182,11 @@
                 <div style="font-size: 0.95em; color: #888; margin-top:.3em;">Currently active/Planned</div>
             </div>
             <div class="inventory-card">
+                <b>Utilization by Site</b>
+                <canvas id="utilLine" height="170"></canvas>
+                <div style="font-size:0.95em; color:#888; margin-top:.3em;">Trends by site</div>
+            </div>
+            <div class="inventory-card">
                 <b>Mini Network Map</b>
                 <svg class="svg-mini-map" viewBox="0 0 250 150" width="90%" height="100">
                     <!-- Mini network like dashboard -->
@@ -214,7 +219,7 @@
             </div>
         </div>
         <!-- Filter/Search Bar -->
-        <div class="filter-bar" style="margin-top:2em;margin-bottom:-.5em;">
+        <form class="filter-bar" style="margin-top:2em;margin-bottom:-.2em;" onsubmit="applyFilters();return false;">
             <label>Status
                 <select id="statusFilter">
                     <option value="all">All</option>
@@ -223,10 +228,14 @@
                 </select>
             </label>
             <label>Search
-                <input type="search" placeholder="Name or ID" id="searchInput">
+                <input type="search" placeholder="Name or ID" id="searchInput" autocomplete="off">
             </label>
-            <button class="btn-link" id="filterBtn">Filter</button>
-        </div>
+            <button class="btn-link" id="filterBtn" type="submit">Apply</button>
+            <span style="margin-left:auto;display:flex;gap:1em;align-items:center;">
+                <button class="btn-link accent" type="button" onclick="downloadTable('csv')">Export CSV</button>
+                <button class="btn-link secondary" type="button" onclick="downloadTable('pdf')">Export PDF</button>
+            </span>
+        </form>
         <!-- Table: Digital Twin List -->
         <div class="adv-table-wrap">
             <table class="inventory-table" id="inventoryTable">
@@ -248,7 +257,7 @@
         </div>
         <!-- Summary Section -->
         <div class="summary-section" style="margin-bottom:3em;">
-            <div><span class="key-metric">Tip:</span> Click on a row for details, filtering auto-updates KPIs and charts for demo effect.</div>
+            <div><span class="key-metric">Tip:</span> Click on a row for details. Filtering/search fully updates KPIs/charts. Export for exec demo.</div>
             <a href="/" class="btn-link" style="margin-top:.9em;">Back to Dashboard</a>
         </div>
     </div>
@@ -306,7 +315,7 @@
     }
 
     // Chart update (redraw)
-    let statusPie, availBar;
+    let statusPie, availBar, utilLine;
     function updateCharts(list) {
         // Pie for status
         const statCounts = [
@@ -352,6 +361,36 @@
                 }
             }
         });
+        // Utilization trend (for visual effect: random trends per site)
+        if (utilLine) utilLine.destroy();
+        const utils = list.map(t=>
+            t.kpis && t.kpis.utilization !== undefined
+                ? [t.kpis.utilization-5, t.kpis.utilization, t.kpis.utilization+7]
+                : [null,null,null]
+        );
+        utilLine = new Chart(document.getElementById('utilLine').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['-1 wk','This week','+1 wk'],
+                datasets: list.map((t,i)=>({
+                    label: t.name,
+                    data: utils[i],
+                    fill: false,
+                    borderColor: t.status==="planned" ? "#fbbf24" : "#2563eb",
+                    backgroundColor: t.status==="planned" ? "#fbbf24" : "#2563eb",
+                    tension: 0.27,
+                    spanGaps:true,
+                    pointRadius:4
+                }))
+            },
+            options: {
+                plugins: { legend: { display: true, position:'bottom'} },
+                scales: {
+                    y: { beginAtZero: true, max: 100 },
+                    x: { ticks: { color: '#555' }}
+                }
+            }
+        });
     }
 
     function applyFilters() {
@@ -361,6 +400,26 @@
         renderTable(filtered);
         updateKpis(filtered);
         updateCharts(filtered);
+    }
+
+    // Export function
+    function downloadTable(fmt) {
+        const rows = Array.from(document.querySelectorAll("#inventoryTable tr"));
+        let csv = '';
+        for (const row of rows) {
+            let cols = Array.from(row.querySelectorAll("th,td")).map(td=>
+                `"${(td.textContent||'').replace(/"/g,'""').trim()}"`
+            );
+            csv += cols.join(",") + "\n";
+        }
+        if (fmt === "csv") {
+            const blob = new Blob([csv],{type:'text/csv'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download="DigitalTwinInventory.csv";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        } else if (fmt === "pdf") {
+            alert("PDF export demo: Use your browser's Print to PDF, or see /static/mock_site_report.pdf for full exports in demo.");
+        }
     }
 
     document.getElementById("filterBtn").onclick = applyFilters;

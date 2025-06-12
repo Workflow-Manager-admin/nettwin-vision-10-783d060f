@@ -83,24 +83,49 @@
     <div class="main">
         <h1>Reports & Insights</h1>
         <div class="report-card">
-            <!-- Quick metrics -->
+            <!-- Quick metrics (dynamic filter/search bar) -->
+            <div class="metrics-bar">
+                <form style="display:flex;align-items:center;gap:1em;flex-wrap:wrap;margin-bottom:1.1em;width:100%;" onsubmit="applyReportFilters();return false;">
+                    <label>Status
+                        <select id="repStatusFilter"><option value="all">All</option><option value="Active">Active</option><option value="Planned">Planned</option></select>
+                    </label>
+                    <label>Site
+                        <input type="search" id="repSearchInput" placeholder="Site name...">
+                    </label>
+                    <button type="submit" class="btn-link" style="margin-left:.6em;">Filter</button>
+                    <span style="margin-left:auto;display:flex;gap:1em;align-items:center;">
+                        <button class="btn-link accent" type="button" onclick="downloadReportTable('csv')">Export CSV</button>
+                        <button class="btn-link secondary" type="button" onclick="downloadReportTable('pdf')">Export PDF</button>
+                    </span>
+                </form>
+            </div>
+            <!-- KPIs -->
             <div class="metrics-bar">
                 <div class="key-metric-box"><span class="head">Upgrades Planned:</span> <span id="kpiUpg">7</span></div>
                 <div class="key-metric-box"><span class="head">Current Alerts:</span> <span id="kpiAlerts">2</span></div>
                 <div class="key-metric-box"><span class="head">Inventory:</span> <span id="kpiInv">4 sites</span></div>
                 <div class="key-metric-box"><span class="head">Highest Uptime:</span> <span id="kpiUptime">98.3%</span></div>
             </div>
-            <!-- Charts -->
+            <!-- Rich KPI Charts -->
             <div class="charts-row">
                 <div class="chart-wrap">
-                    <div class="chart-title">Planned Upgrades per Quarter</div>
+                    <div class="chart-title">Upgrades per Quarter</div>
                     <canvas id="upgradeBar" height="127"></canvas>
                 </div>
                 <div class="chart-wrap">
                     <div class="chart-title">Alerts by Type</div>
                     <canvas id="alertsPie" height="127"></canvas>
                 </div>
+                <div class="chart-wrap">
+                    <div class="chart-title">Availability Trend</div>
+                    <canvas id="trendLine" height="127"></canvas>
+                </div>
+                <div class="chart-wrap">
+                    <div class="chart-title">Status Distribution</div>
+                    <canvas id="statusDonut" height="127"></canvas>
+                </div>
             </div>
+            <!-- Table section -->
             <div class="charts-row">
                 <div class="chart-wrap">
                     <div class="chart-title">Upgrades Table</div>
@@ -131,8 +156,8 @@
                 </ul>
             </div>
             <div class="report-download">
-                <button onclick="alert('Demo report download initiated!');" class="btn-link">Download Current Report</button>
-                <button onclick="alert('Download as PDF! (demo)');" class="btn-link accent" style="margin-left:.9em;">Export as PDF</button>
+                <button onclick="downloadReportTable('csv')" class="btn-link">Download Current Report</button>
+                <button onclick="downloadReportTable('pdf')" class="btn-link accent" style="margin-left:.9em;">Export as PDF</button>
             </div>
             <a href="/" class="btn-link back-link" style="display:inline-block;">Back to Dashboard</a>
         </div>
@@ -145,52 +170,112 @@
             alerts: ["Capacity", "Failure"],
             alertValues: [3, 1],
             table: [
-                {site:"Central Hub", status:"Active", planned:1, alerts:0},
-                {site:"North Node", status:"Active", planned:2, alerts:1},
-                {site:"East Node", status:"Planned", planned:1, alerts:1},
-                {site:"South Node", status:"Active", planned:3, alerts:0},
+                {site:"Central Hub", status:"Active", planned:1, alerts:0, trend:[98.0,98.2,98.3], avail:[92,95,98], util:[41,56,66]},
+                {site:"North Node", status:"Active", planned:2, alerts:1, trend:[96.2,96.5,96.9], avail:[85,91,96], util:[82,84,87]},
+                {site:"East Node", status:"Planned", planned:1, alerts:1, trend:[null,null,null], avail:[null,null,null], util:[null,null,null]},
+                {site:"South Node", status:"Active", planned:3, alerts:0, trend:[97,97.4,97.5], avail:[87,94,97], util:[45,52,55]},
             ],
             kpis: { upgrades:7, alerts:2, inventory:4, uptime:98.3 }
         };
 
-        // Inject KPIs
-        document.getElementById("kpiUpg").textContent = reportData.kpis.upgrades;
-        document.getElementById("kpiAlerts").textContent = reportData.kpis.alerts;
-        document.getElementById("kpiInv").textContent = `${reportData.kpis.inventory} sites`;
-        document.getElementById("kpiUptime").textContent = (reportData.kpis.uptime || "-") + "%";
+        // Dynamic subset via filter
+        let filteredData = reportData.table.slice();
+
+        function injectKpis(reportStats) {
+            document.getElementById("kpiUpg").textContent = reportStats.upgrades;
+            document.getElementById("kpiAlerts").textContent = reportStats.alerts;
+            document.getElementById("kpiInv").textContent = `${reportStats.inventory} sites`;
+            document.getElementById("kpiUptime").textContent = (reportStats.uptime || "-") + "%";
+        }
+        injectKpis(reportData.kpis);
 
         // Bar for upgrades per quarter
-        let upgradeBar = new Chart(document.getElementById('upgradeBar').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: reportData.quarters,
-                datasets: [{
-                    label: 'Planned Upgrades',
-                    data: reportData.upgrades,
-                    backgroundColor: '#2563eb'
-                }]
-            },
-            options: {
-                plugins: { legend: {display: false}},
-                scales: { y: {beginAtZero: true, max: Math.max(...reportData.upgrades)+1 }, x: {ticks:{color:'#555'}} }
+        let upgradeBar, alertsPie, trendLine, statusDonut;
+        function renderCharts(list) {
+            // Upgrades per quarter
+            if (upgradeBar) upgradeBar.destroy();
+            let totalUpgrades = [0,0,0,0];
+            // Distribute planned upgrades randomly
+            for (let i=0; i<list.length; ++i)
+                if (list[i].planned&&list[i].planned>0)
+                    totalUpgrades[i%4] += list[i].planned;
+            upgradeBar = new Chart(document.getElementById('upgradeBar').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: reportData.quarters,
+                    datasets: [{
+                        label: 'Planned Upgrades',
+                        data: totalUpgrades,
+                        backgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    plugins: { legend: {display: false}},
+                    scales: { y: {beginAtZero: true, max: Math.max(...totalUpgrades, 2) + 1 }, x: {ticks:{color:'#555'}} }
+                }
+            });
+            // Alerts Pie
+            if (alertsPie) alertsPie.destroy();
+            let aTypes = reportData.alerts.slice();
+            let aVals = [0,0];
+            // Count by type in filtered
+            for (let row of list) {
+                if (row.status === "Active") aVals[0] += row.alerts;
+                if (row.status === "Planned") aVals[1] += row.alerts;
             }
-        });
-        // Pie for alerts by type
-        let alertsPie = new Chart(document.getElementById('alertsPie').getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: reportData.alerts,
-                datasets: [{
-                    data: reportData.alertValues,
-                    backgroundColor: ['#fbbf24','#e11d48']
-                }]
-            },
-            options: {
-                plugins: { legend: {display: true, position:'bottom'}}
+            alertsPie = new Chart(document.getElementById('alertsPie').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: aTypes,
+                    datasets: [{
+                        data: aVals,
+                        backgroundColor: ['#fbbf24','#e11d48']
+                    }]
+                },
+                options: {
+                    plugins: { legend: {display: true, position:'bottom'}}
+                }
+            });
+            // Trend Line (combine all avails)
+            if (trendLine) trendLine.destroy();
+            trendLine = new Chart(document.getElementById('trendLine').getContext('2d'),{
+                type:'line',
+                data:{
+                    labels:['Prev','Last','Current'],
+                    datasets:list.map(row=>({
+                        label:row.site,
+                        data:row.trend,
+                        borderColor: row.status==="Planned"?"#fbbf24":"#2563eb",
+                        backgroundColor: row.status==="Planned"?"#fbbf24":"#2563eb",
+                        fill:false, tension:.28, spanGaps:true, pointRadius:4
+                    }))
+                },
+                options:{
+                    plugins:{legend:{display:true,position:'bottom'}},
+                    scales:{y: {beginAtZero:true,max:100}, x: {ticks:{color:'#555'}}}
+                }
+            });
+            // Status Donut
+            if (statusDonut) statusDonut.destroy();
+            let stCount=[0,0], stLab=["Active","Planned"];
+            for(let r of list) {
+                if(r.status==="Active") ++stCount[0];
+                if(r.status==="Planned") ++stCount[1];
             }
-        });
+            statusDonut = new Chart(document.getElementById('statusDonut').getContext('2d'),{
+                type:'doughnut',
+                data:{
+                    labels:stLab,
+                    datasets:[{
+                        data:stCount,
+                        backgroundColor:['#22c55e','#fbbf24']
+                    }]
+                },
+                options:{cutout:"72%",plugins:{legend:{display:true,position:'bottom'}}}
+            });
+        }
 
-        // Table
+        // Table logic (matches filter)
         function renderRepTable(list) {
             let tb = document.querySelector("#repTable tbody");
             tb.innerHTML = "";
@@ -203,7 +288,60 @@
                 </tr>`
             }
         }
-        renderRepTable(reportData.table);
+
+        function applyReportFilters() {
+            const statusVal = document.getElementById("repStatusFilter").value;
+            const searchVal = document.getElementById("repSearchInput").value.toLowerCase();
+            filteredData = reportData.table.filter(row =>
+                (statusVal === "all" || row.status === statusVal) &&
+                (!searchVal || (row.site.toLowerCase().includes(searchVal)))
+            );
+            // Update summary KPIs (recompute)
+            let sumUpg=0, sumAlerts=0, uptime=0, upCnt=0;
+            for(const row of filteredData) {
+                sumUpg += (row.planned||0);
+                sumAlerts += (row.alerts||0);
+                if(row.trend && row.trend[2]) { uptime+=row.trend[2]; ++upCnt; }
+            }
+            let stats = {
+                upgrades: sumUpg,
+                alerts: sumAlerts,
+                inventory: filteredData.length,
+                uptime: (upCnt > 0 ? (uptime/upCnt).toFixed(1) : "-")
+            };
+            injectKpis(stats);
+            renderCharts(filteredData);
+            renderRepTable(filteredData);
+        }
+
+        // Export function for executive demo
+        function downloadReportTable(fmt) {
+            const rows = Array.from(document.querySelectorAll("#repTable tr"));
+            let csv = '';
+            for (const row of rows) {
+                let cols = Array.from(row.querySelectorAll("th,td")).map(td=>
+                    `"${(td.textContent||'').replace(/"/g,'""').trim()}"`
+                );
+                csv += cols.join(",") + "\n";
+            }
+            if (fmt === "csv") {
+                const blob = new Blob([csv],{type:'text/csv'});
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download="NetworkTwinReport.csv";
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            } else if(fmt === "pdf") {
+                alert("PDF export demo: Use your browser's Print to PDF, or see /static/mock_site_report.pdf for a sample export.");
+            }
+        }
+
+        // Initial load handlers
+        document.getElementById("repStatusFilter").onchange = applyReportFilters;
+        document.getElementById("repSearchInput").addEventListener("keyup", function(evt){ if(evt.key==="Enter") applyReportFilters(); });
+
+        window.onload = function() {
+            renderCharts(filteredData);
+            renderRepTable(filteredData);
+        };
     </script>
 </body>
 </html>
