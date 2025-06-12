@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +16,6 @@ from .routers import (
     mock_api,
     ui_meta,
 )
-
 
 THEME = {
     "primary": "#2563eb",
@@ -35,6 +36,13 @@ THEME = {
     },
 }
 
+# Ensure STATIC_DIR exists and is properly referenced
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 app = FastAPI(
     title="NetTwin Vision-10 Backend",
@@ -69,16 +77,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import os
-
-# Ensure STATIC_DIR exists and is properly referenced
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(network_map.router, prefix="/api/v1/map", tags=["Map"])
@@ -100,6 +99,49 @@ def root_landing(request: Request):
             "theme": THEME,
             "app_name": "NetTwin Vision-10",
         }
+    )
+
+
+# --- DEMO Second-level UI routes: returns HTML demo, not API JSON ---
+
+
+@app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+def dashboard_demo(request: Request):
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "theme": THEME, "section": "Dashboard"}
+    )
+
+
+@app.get("/map", response_class=HTMLResponse, include_in_schema=False)
+def map_demo(request: Request):
+    return templates.TemplateResponse(
+        "network_map.html",
+        {"request": request, "theme": THEME, "section": "Network Map"}
+    )
+
+
+@app.get("/planning", response_class=HTMLResponse, include_in_schema=False)
+def planning_demo(request: Request):
+    return templates.TemplateResponse(
+        "planning.html",
+        {"request": request, "theme": THEME, "section": "Planning Wizard"}
+    )
+
+
+@app.get("/inventory", response_class=HTMLResponse, include_in_schema=False)
+def inventory_demo(request: Request):
+    return templates.TemplateResponse(
+        "inventory.html",
+        {"request": request, "theme": THEME, "section": "Inventory"}
+    )
+
+
+@app.get("/reports", response_class=HTMLResponse, include_in_schema=False)
+def reports_demo(request: Request):
+    return templates.TemplateResponse(
+        "reports.html",
+        {"request": request, "theme": THEME, "section": "Reports"}
     )
 
 
