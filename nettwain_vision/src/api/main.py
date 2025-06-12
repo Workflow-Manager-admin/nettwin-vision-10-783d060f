@@ -90,13 +90,14 @@ app.include_router(ui_meta.router, prefix="/api/v1/ui", tags=["UI Meta"])
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def root_landing(request: Request):
-    """Minimal landing route, demo-only."""
+def root_dashboard(request: Request):
+    """Dashboard is now the default homepage."""
     return templates.TemplateResponse(
-        "landing.html",
+        "dashboard.html",
         {
             "request": request,
             "theme": THEME,
+            "section": "Dashboard",
             "app_name": "NetTwin Vision-10",
         }
     )
