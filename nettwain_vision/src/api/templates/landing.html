@@ -81,10 +81,11 @@
             <a href="/inventory">Inventory</a>
             <a href="/reports">Reports</a>
             <a href="/api/v1/ui/theme">UI Theme</a>
-            <div style="margin-top:2em; border-top:1px solid #eee; padding-top:1em;">
-                <a href="/docs" style="color:#888;">API Docs</a>
-            </div>
+            <!-- API Docs always at the bottom of menu -->
         </nav>
+        <div style="position: fixed; bottom: 2em; left: 1em; width: 180px;">
+            <a href="/docs" style="color: #888; display: block; border-top:1px solid #eee; padding-top:0.8em; margin-top:0.8em; text-align:left;">API Docs</a>
+        </div>
     </div>
     <div class="main">
         <h1>{{ app_name }}</h1>
