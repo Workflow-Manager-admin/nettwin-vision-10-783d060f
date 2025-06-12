@@ -1,0 +1,113 @@
+<!--
+    Demo landing page (Jinja2).
+    Modular card-based layout, sidebar, primary/secondary/accent colors, light/dark auto detection.
+    For further extension/front-end integration, link card UIs to /ui or /docs.
+-->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme.scheme }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ app_name }}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        :root {
+            --primary: {{ theme.primary }};
+            --secondary: {{ theme.secondary }};
+            --accent: {{ theme.accent }};
+            --card-radius: {{ theme.components.card.border_radius }};
+            --sidebar-bg: {{ theme.components.sidebar.bg_light }};
+            --sidebar-bg-dark: {{ theme.components.sidebar.bg_dark }};
+        }
+        body {
+            background: var(--sidebar-bg);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            color: #172033;
+        }
+        .sidebar {
+            background: var(--sidebar-bg);
+            width: 200px;
+            min-height: 100vh;
+            float: left;
+            padding: 2em 1em 1em 1em;
+            color: var(--secondary);
+        }
+        .main {
+            margin-left: 220px;
+            padding: 2em;
+        }
+        .card {
+            background: #fff;
+            padding: 1.25em 1.5em;
+            margin: 1em 0;
+            border-radius: var(--card-radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: inline-block;
+            width: 300px;
+            vertical-align: top;
+        }
+        .card.accent { border-left: 5px solid var(--accent);}
+        .card.primary { border-left: 5px solid var(--primary);}
+        .card.secondary {border-left: 5px solid var(--secondary);}
+        h1 {font-size: 2rem;}
+        nav a {
+            display: block;
+            margin: 1.5em 0;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        nav a:hover {color: var(--accent);}
+        @media (prefers-color-scheme: dark) {
+            body {background: #172033; color: #f4f4f5;}
+            .sidebar {background: var(--sidebar-bg-dark); color: #fbbf24;}
+            .card {background: #18181b; color: #f4f4f5;}
+            .card.primary {border-left: 5px solid var(--primary);}
+            .card.accent {border-left: 5px solid var(--accent);}
+            .card.secondary {border-left: 5px solid var(--secondary);}
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 style="color: var(--primary);">{{ app_name }}</h2>
+        <nav>
+            <a href="/docs">API Docs</a>
+            <a href="/api/v1/dashboard">Dashboard</a>
+            <a href="/api/v1/map">Network Map</a>
+            <a href="/api/v1/planning/start">Planning Wizard</a>
+            <a href="/api/v1/inventory">Inventory</a>
+            <a href="/api/v1/reports">Reports</a>
+            <a href="/api/v1/ui/theme">UI Theme</a>
+        </nav>
+    </div>
+    <div class="main">
+        <h1>{{ app_name }}</h1>
+        <div class="card primary">
+            <b>Dashboard Overview</b><br>
+            KPIs, quick widgets, network summary. <a href="/api/v1/dashboard" style="color:var(--primary)">Try endpoint</a>
+        </div>
+        <div class="card accent">
+            <b>Network Map &amp; Planning</b><br>
+            Interactive overlays, filters, planning wizard.<br>
+            <a href="/api/v1/map" style="color:var(--accent)">Map endpoint</a>
+        </div>
+        <div class="card secondary">
+            <b>Twin Inventory &amp; Reports</b><br>
+            Table views, detail pages, CSV/PDF export. <a href="/api/v1/inventory" style="color:var(--secondary)">Inventory endpoint</a>
+        </div>
+        <div class="card" style="border-left: 5px solid #666;">
+            <b>Modular, Card-Based UI</b><br>
+            Demo-ready, future front-end plug-in:<br>
+            <ul>
+                <li>Sidebar nav, responsive layout</li>
+                <li>Theming (light/dark auto)</li>
+                <li>Toasts, modals, widget cards</li>
+            </ul>
+            <a href="/api/v1/ui/theme" style="color:var(--primary)">Theme endpoint</a>
+        </div>
+    </div>
+</body>
+</html>
