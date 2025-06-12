@@ -6,15 +6,38 @@
     <link rel="stylesheet" href="/static/demo.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .wizard-card {background:#fff; border-radius:1em; box-shadow:0 2px 10px rgba(37,99,235,0.08); padding:1.5em 1.5em;}
-        .wizard-stepper {display:flex; gap:2em; margin-bottom:1em;}
-        .step {flex-basis:60px; text-align:center; padding:0.7em 0;}
-        .step-circle {width:30px; height:30px; background:#2563eb; color:#fff; border-radius:50%; display:inline-block; line-height:30px; font-weight:bold;}
-        .step-label {margin-top:0.44em; font-size:0.97em; color:#444;}
-        .step.active .step-circle {background:#fbbf24; color:#111;}
+        .wizard-card { background:#fff; border-radius:1em; box-shadow:0 2px 10px rgba(37,99,235,0.09); padding:2em 2.2em 2em 2.2em; margin:2.5em auto; max-width:600px; }
+        .wizard-stepper { display:flex; gap:2em; margin-bottom:1.4em; justify-content:center;}
+        .step { flex-basis:70px; text-align:center; padding:0.7em 0; position:relative; }
+        .step-circle { width:32px; height:32px; background:#2563eb; color:#fff; border-radius:50%; display:inline-block; line-height:32px; font-weight:bold; font-size:1.13em;}
+        .step-label { margin-top:0.35em; font-size:0.95em; color:#444;}
+        .step.active .step-circle { background:#fbbf24; color:#111; border: 2.5px solid #2563eb;}
+        .step.completed .step-circle { background:#22c55e; color:#fff;}
+        .step:not(:last-child)::after { content:""; position:absolute; right:-1em; top:16px; width:2em; height:4px; background: #e0e7ef;}
+        .wizard-actions {margin:2.2em 0 0 0; text-align:center;}
+        .wizard-actions button {background:var(--primary); color: #fff; border:none; padding:0.67em 2.1em; border-radius:8px; font-weight:500; font-size:1.07em; margin:0 0.7em; cursor:pointer; transition:background 0.13s;}
+        .wizard-actions button[disabled] {background: #d1d5db; color: #888; cursor:not-allowed;}
+        .wizard-actions .secondary {background:var(--secondary);}
+        .wizard-actions .accent {background:var(--accent); color:#222;}
+        .btn-link {margin-top:1em; display:inline-block;}
+        .option-card {background:#f7fafc; border-radius:0.7em; box-shadow: 0 1px 7px rgba(24,24,27,0.06); padding:1em 1.4em; margin-bottom:.95em; cursor:pointer; border: 2px solid transparent; transition: border 0.14s;}
+        .option-card.selected {border: 2px solid #2563eb; background: #e0efff;}
+        .option-card .title {font-weight:600; color:#2563eb; font-size:1.13em;}
+        .option-card .desc {color:#666; font-size:0.98em;}
+        .wizard-head {font-size:1.29em; font-weight:600; margin-bottom:.9em; color:var(--primary);}
+        .summary-table {width:92%; margin:1.1em auto 0 auto; border-collapse:collapse; font-size:1em;}
+        .summary-table td {padding:0.44em 0.7em; border-bottom:1px solid #eaeaea;}
+        .summary-table .label {color:#888;}
+        .alert {margin:0.67em 0; color:#e11d48; font-size:0.99em;}
         @media (prefers-color-scheme: dark) {
             .wizard-card { background: #18181b; color: #f4f4f5;}
-            .step-label{color:#aaa;}
+            .step-label{color:#ccc;}
+            .option-card { background: #232f47; color: #c7daf7;}
+            .option-card.selected { background:#113060;}
+            .summary-table td { border-bottom:1px solid #232f47;}
+        }
+        @media (max-width:700px) {
+            .wizard-card {max-width:99vw; padding:1.2em 0.4em;}
         }
     </style>
 </head>
@@ -22,64 +45,241 @@
     <div class="main">
         <h1>Planning Wizard</h1>
         <div class="wizard-card accent">
-            <b>Plan New Site / Upgrade</b>
-            <div class="wizard-stepper">
-                <div class="step active">
-                    <div class="step-circle">1</div>
-                    <div class="step-label">Select Type</div>
-                </div>
-                <div class="step">
-                    <div class="step-circle" style="background:#2563eb;">2</div>
-                    <div class="step-label">Configure</div>
-                </div>
-                <div class="step">
-                    <div class="step-circle" style="background:#2563eb;">3</div>
-                    <div class="step-label">Review Impact</div>
-                </div>
-                <div class="step">
-                    <div class="step-circle" style="background:#2563eb;">4</div>
-                    <div class="step-label">Approve</div>
-                </div>
+            <div class="wizard-stepper" id="wizardStepper">
+                <!-- Steps rendered in JS -->
             </div>
-            <div style="margin-top:1em;">
-                <b>Before/After Impact (North Node):</b><br>
-                <canvas id="impactChart" height="140"></canvas>
+            <div id="wizardContent">
+                <!-- Dynamic: step-specific content here -->
             </div>
-            <div style="color:#888; margin:.6em 0 1em 0;font-size:0.97em;">
-                See how KPIs improve with this plan.<br>
-                <i>Alerts reduced from 1 to 0; risk drops substantially.</i>
+            <div class="wizard-actions">
+                <button id="backBtn" class="secondary">Back</button>
+                <button id="nextBtn">Next</button>
             </div>
-            <a href="/" class="btn" style="margin-top:1em;">Back to Dashboard</a>
+            <a href="/" class="btn-link">Back to Dashboard</a>
         </div>
     </div>
     <script>
-    // Before/After Impact Chart (Bar)
-    const impactChart = document.getElementById('impactChart').getContext('2d');
-    new Chart(impactChart, {
-        type: 'bar',
-        data: {
-            labels: ['Availability (%)','Max Utilization','Risk Score'],
-            datasets: [
-                {
-                    label: 'Before',
-                    data: [96.9, 87, 6.5],
-                    backgroundColor: '#e11d48'
-                },
-                {
-                    label: 'After',
-                    data: [98.2, 66, 2.7],
-                    backgroundColor: '#22c55e'
-                }
-            ]
-        },
-        options: {
-            plugins: { legend: { display: true, position: 'bottom' } },
-            scales: {
-                y: {beginAtZero:true, max:100},
-                x: {ticks:{color:'#666'}}
-            }
+    // --- Demo Mock Data ---
+    const steps = [
+        {label: "Site/Upgrade", detail: "Select site and scenario type"},
+        {label: "Configure", detail: "Choose upgrade/scenario details"},
+        {label: "Simulate", detail: "Run simulation"},
+        {label: "Review", detail: "Review & Confirm"},
+    ];
+    const siteOptions = [
+        {id:"A1", title:"Central Hub", desc:"Large metro cell site. High availability."},
+        {id:"A2", title:"North Node", desc:"Suburban node. Good coverage. Currently high utilization."},
+        {id:"A3", title:"East Node", desc:"Expansion-ready edge site. Planned only."},
+        {id:"A4", title:"South Node", desc:"Small active cell. Moderate traffic."},
+    ];
+    const scenarioTypes = [
+        {id:"capacity-upgrade",  name:"Capacity Upgrade", desc:"Increase bandwidth for chosen site."},
+        {id:"failover-addition", name:"Add Failover Link", desc:"Add redundant fiber/5G backup for resiliency."},
+        {id:"greenfield-site",   name:"New Greenfield Site", desc:"Add a brand-new site at a new location."}
+    ];
+    const simulationKpiData = {
+        before: { availability:96.9, utilization:87, risk:6.5, alerts:["High utilization on A1-A2"] },
+        after: {  availability:98.2, utilization:66, risk:2.7, alerts:[] }
+    };
+
+    // --- Wizard State ---
+    let wizardStep = 0;
+    let state = {
+        selectedSite: siteOptions[1].id,
+        selectedScenario: scenarioTypes[0].id
+    };
+    // --- Stepper UI Render ---
+    function renderStepper() {
+        let html = "";
+        for(let i=0; i<steps.length; ++i) {
+            html += `
+            <div class="step${i===wizardStep?' active':''}${i<wizardStep?' completed':''}">
+                <div class="step-circle">${i+1}</div>
+                <div class="step-label">${steps[i].label}</div>
+            </div>`;
         }
-    });
+        document.getElementById('wizardStepper').innerHTML = html;
+    }
+
+    // --- STEP 0: Site/Upgrade selection ---
+    function renderStep0() {
+        let html = `<div class="wizard-head">1. Select Target Site</div>
+        <div id="siteOptions">`;
+        siteOptions.forEach(opt => {
+            html += `
+                <div class="option-card${state.selectedSite===opt.id?' selected':''}"
+                     onclick="selectSite('${opt.id}')">
+                    <div class="title">${opt.title}</div>
+                    <div class="desc">${opt.desc}</div>
+                </div>
+            `;
+        });
+        html += `</div>
+        <div class="wizard-head" style="margin-top:1.2em;">Select Plan Type</div>
+        <div id="scenarioOptions">`;
+        scenarioTypes.forEach(tp => {
+            html += `
+                <div class="option-card${state.selectedScenario===tp.id?' selected':''}"
+                     onclick="selectScenario('${tp.id}')">
+                    <div class="title">${tp.name}</div>
+                    <div class="desc">${tp.desc}</div>
+                </div>
+            `;
+        });
+        html += "</div>";
+        document.getElementById('wizardContent').innerHTML = html;
+        // Attach card click highlights (mobile needs JS, as no focus)
+        setTimeout(()=>{ // defer until HTML processed
+            Array.from(document.querySelectorAll("#siteOptions .option-card")).forEach((el,idx) => {
+                el.onclick = ()=>{ selectSite(siteOptions[idx].id); };
+            });
+            Array.from(document.querySelectorAll("#scenarioOptions .option-card")).forEach((el,idx) => {
+                el.onclick = ()=>{ selectScenario(scenarioTypes[idx].id); };
+            });
+        },30);
+    }
+    function selectSite(id) { state.selectedSite=id; renderStep0(); }
+    function selectScenario(id) { state.selectedScenario=id; renderStep0(); }
+
+    // --- STEP 1: Configuration (mock params for scenario) ---
+    function renderStep1() {
+        const opt = scenarioTypes.find(s=>s.id===state.selectedScenario)||scenarioTypes[0];
+        let html = `<div class="wizard-head">2. Configure "${opt.name}"</div>
+        <div class="option-card selected">
+            <div class="title">${opt.name}${state.selectedScenario==="greenfield-site"?" (Demo only)":""}</div>
+            <div class="desc">${opt.desc}</div>
+            <div style="margin-top:1em;">
+                <label><b>Site:</b>
+                <select id="siteDropdown" style="margin-left:0.7em;font-size:1.1em;padding:0.12em 0.6em;border-radius:6px;">
+                    ${siteOptions.map(s=>`<option value="${s.id}" ${s.id===state.selectedSite?"selected":""}>${s.title}</option>`).join("")}
+                </select></label>
+            </div>
+            ${(state.selectedScenario === "capacity-upgrade" || state.selectedScenario === "failover-addition")
+                ?`<div style="margin-top:.9em;"><b>Target Capacity (Gbps):</b>
+                    <input id="capacityInput" type="number" style="margin-left:0.5em;border-radius:4px;padding:.2em .7em;width:90px;"
+                        value="${state.targetCapacity||20}" min="1"></div>`:""}
+            ${(state.selectedScenario === "greenfield-site")
+                ?`<div style="margin-top:.9em;"><b>Site Name:</b>
+                    <input id="siteNameInput" value="${state.newSiteName||''}" style="margin-left:0.6em;border-radius:4px;padding:.2em .7em;width:140px;" placeholder="South-East Node"></div>`:""}
+        </div>
+        <div style="color:#888;font-size:0.98em;margin-top:.6em;">Configure scenario for simulating before/after impact.</div>`;
+        document.getElementById('wizardContent').innerHTML = html;
+        // Attach event listeners for controls
+        document.getElementById('siteDropdown').onchange = (e)=>{ state.selectedSite = e.target.value; };
+        let capInp = document.getElementById('capacityInput');
+        if(capInp) capInp.onchange = (e)=>{ state.targetCapacity = e.target.value; };
+        let nameInp = document.getElementById('siteNameInput');
+        if(nameInp) nameInp.onchange = (e)=>{ state.newSiteName = e.target.value; };
+    }
+
+    // --- STEP 2: Simulate (chart+mocked kpi) ---
+    function renderStep2() {
+        let html = `<div class="wizard-head">3. Simulate: Before/After Impact</div>
+            <div style="margin-bottom:.8em;font-size:1.03em;">
+                <b>Target:</b> ${siteOptions.find(s=>s.id===state.selectedSite)?.title||"Unknown"}
+                <span style="color:#888;">(${scenarioTypes.find(s=>s.id===state.selectedScenario)?.name})</span>
+            </div>
+            <canvas id="simChart" height="145"></canvas>
+            <div style="margin-top:0.7em;">
+                <b>Alerts:</b>
+                <span class="alert">${simulationKpiData.before.alerts.length ? simulationKpiData.before.alerts.join(', ') : "None"}</span>
+                <span class="alert" style="color:#22c55e;">After: ${simulationKpiData.after.alerts.length ? simulationKpiData.after.alerts.join(', ') : "No alerts"}</span>
+            </div>
+            <div style="color:#888;font-size:0.98em; margin-top:.9em;">
+                These values are for demo purposes. In the full app, simulate powered by API/engine.
+            </div>
+        `;
+        document.getElementById('wizardContent').innerHTML = html;
+        // Chart.js rendering
+        setTimeout(()=>{
+            const ctx = document.getElementById('simChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Availability (%)', 'Max Utilization', 'Risk Score'],
+                    datasets: [
+                        {
+                            label: 'Before',
+                            data: [
+                                simulationKpiData.before.availability,
+                                simulationKpiData.before.utilization,
+                                simulationKpiData.before.risk
+                            ],
+                            backgroundColor: '#e11d48'
+                        },
+                        {
+                            label: 'After',
+                            data: [
+                                simulationKpiData.after.availability,
+                                simulationKpiData.after.utilization,
+                                simulationKpiData.after.risk
+                            ],
+                            backgroundColor: '#22c55e'
+                        }
+                    ]
+                },
+                options: {
+                    plugins: { legend: { display: true, position: 'bottom'} },
+                    scales: { y: { beginAtZero:true, max: 100 }, x: {ticks:{color:'#666'}} },
+                    animation: {duration:900}
+                }
+            });
+        },40);
+    }
+
+    // --- STEP 3: Review & Confirmation ---
+    function renderStep3() {
+        let site = siteOptions.find(s=>s.id===state.selectedSite) || siteOptions[0];
+        let scenario = scenarioTypes.find(s=>s.id===state.selectedScenario) || scenarioTypes[0];
+        let html = `<div class="wizard-head">4. Review & Confirm Plan</div>
+            <table class="summary-table">
+                <tr><td class="label">Site:</td><td>${site.title}</td></tr>
+                <tr><td class="label">Plan Type:</td><td>${scenario.name}</td></tr>
+                <tr><td class="label">Prev. Availability:</td><td style="color:#e11d48;">${simulationKpiData.before.availability}%</td></tr>
+                <tr><td class="label">Post-Upgrade Availability:</td><td style="color:#22c55e;">${simulationKpiData.after.availability}%</td></tr>
+                <tr><td class="label">Alerts Reduced:</td><td><span style="color:#22c55e;">${simulationKpiData.before.alerts.length - simulationKpiData.after.alerts.length}</span></td></tr>
+            </table>
+            <div style="color:#888;font-size:.98em; margin-top:.9em;">
+                Ready to approve and save this plan? (Demo only; no actual backend write occurs)
+            </div>
+            <div id="finalStatus" style="font-size:1.04em; margin-top:.7em;"></div>
+        `;
+        document.getElementById('wizardContent').innerHTML = html;
+        // Change Next to Finish
+        document.getElementById('nextBtn').textContent = "Finish";
+    }
+
+    // --- Main navigation logic ---
+    function showStep() {
+        renderStepper();
+        // Control navigation button visibility/state
+        document.getElementById('backBtn').disabled = (wizardStep===0);
+        let nextLabel = wizardStep===steps.length-1 ? "Finish" : "Next";
+        document.getElementById('nextBtn').textContent = nextLabel;
+        // Step-specific content
+        if(wizardStep === 0) renderStep0();
+        else if(wizardStep === 1) renderStep1();
+        else if(wizardStep === 2) renderStep2();
+        else if(wizardStep === 3) renderStep3();
+    }
+    // Wire up navigation buttons
+    document.getElementById('backBtn').onclick = function() {
+        if(wizardStep > 0) wizardStep--;
+        showStep();
+    };
+    document.getElementById('nextBtn').onclick = function() {
+        if(wizardStep < 3) {
+            wizardStep++;
+            showStep();
+        } else {
+            // Finish: Show confirmation
+            document.getElementById('finalStatus').innerHTML =
+                "<span style='color:#22c55e;'>Plan approved and saved! (Demo)</span>";
+            document.getElementById('nextBtn').disabled = true;
+        }
+    };
+    // On load
+    showStep();
     </script>
 </body>
 </html>
