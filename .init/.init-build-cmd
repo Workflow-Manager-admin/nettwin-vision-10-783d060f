@@ -1,0 +1,4 @@
+{
+    "command": "python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
+    "working_directory": "/home/kavia/workspace/code-generation/nettwin-vision-10-783d060f/Main_Container_for_NetTwin_Vision"
+}

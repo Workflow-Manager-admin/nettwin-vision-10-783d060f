@@ -1,0 +1,4 @@
+{
+    "command": "source venv/bin/activate && uvicorn src.api.main:app --host <host> --port <port>",
+    "working_directory": "/home/kavia/workspace/code-generation/nettwin-vision-10-783d060f/Main_Container_for_NetTwin_Vision"
+}
